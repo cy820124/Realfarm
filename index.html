@@ -2,20 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- 禁止使用者手動縮放，體驗更像真實 App -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>每日任務追蹤器</title>
-
-    <!-- 🌟 PWA / iOS App 化關鍵設定 🌟 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="任務追蹤">
-    <meta name="mobile-web-app-capable" content="yes">
-
-    <!-- App 桌面圖示 (遊戲圖示風格) -->
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/686/686589.png">
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/686/686589.png">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲每日任務追蹤器</title>
     <!-- SortableJS 拖曳套件 -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
@@ -32,24 +20,14 @@
             --border-color: #e1e8ed;
         }
 
-        /* 鎖定頁面，防止手機下拉出現網頁白邊橡皮筋效果 */
-        html, body {
-            height: 100%;
-            overflow-x: hidden;
-            touch-action: manipulation;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 12px;
-            padding-top: env(safe-area-inset-top, 12px); /* 適應 iPhone 流海 / 動態島 */
-            padding-bottom: env(safe-area-inset-bottom, 12px);
             color: #333;
             user-select: none;
             -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent; /* 移除點擊灰色陰影 */
         }
 
         h1 {
@@ -62,7 +40,7 @@
         .stats-bar {
             background: #edf2f7;
             border: 1px solid #cbd5e0;
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 10px;
             margin-bottom: 12px;
             display: flex;
@@ -70,7 +48,6 @@
             align-items: center;
             font-size: 13px;
             font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
         }
 
         .stats-item span {
@@ -82,7 +59,7 @@
             background: #2d3748;
             color: #ffffff;
             padding: 8px 12px;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 12px;
             margin-bottom: 12px;
             text-align: center;
@@ -108,18 +85,12 @@
         }
 
         .btn {
-            padding: 10px 14px;
+            padding: 8px 14px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 13px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.1s active;
-        }
-
-        .btn:active {
-            transform: scale(0.97);
         }
 
         .btn-next-day { background-color: #3182ce; color: white; }
@@ -128,7 +99,7 @@
         .group-container {
             background: var(--card-bg);
             padding: 10px;
-            border-radius: 12px;
+            border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             margin-bottom: 12px;
         }
@@ -141,10 +112,10 @@
 
         .dropdown-btn {
             width: 100%;
-            padding: 10px 12px;
+            padding: 8px 12px;
             background: #edf2f7;
             border: 1px solid #cbd5e0;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 13px;
             font-weight: bold;
             color: #2d3748;
@@ -164,7 +135,7 @@
             right: 0;
             background: #ffffff;
             border: 1px solid #cbd5e0;
-            border-radius: 8px;
+            border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 100;
             padding: 6px 0;
@@ -174,7 +145,7 @@
         .dropdown-menu.show { display: block; }
 
         .dropdown-item {
-            padding: 10px 12px;
+            padding: 8px 12px;
             font-size: 13px;
             display: flex;
             align-items: center;
@@ -188,9 +159,9 @@
         /* 顯示的佇列卡片 */
         .visible-queue-group {
             margin-top: 8px;
-            padding: 8px;
+            padding: 6px;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 6px;
             background: #fafafa;
         }
 
@@ -198,7 +169,7 @@
             font-size: 12px;
             font-weight: bold;
             color: #4a5568;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             padding-left: 2px;
         }
 
@@ -209,7 +180,7 @@
             padding: 4px;
             min-height: 38px;
             border: 1px dashed #cbd5e0;
-            border-radius: 8px;
+            border-radius: 6px;
             background: #ffffff;
         }
 
@@ -218,10 +189,10 @@
 
         .queue-btn {
             flex: 0 0 auto;
-            padding: 8px 14px;
+            padding: 6px 12px;
             background: #edf2f7;
             border: 1px solid #cbd5e0;
-            border-radius: 20px;
+            border-radius: 16px;
             font-size: 13px;
             font-weight: bold;
             color: #2d3748;
@@ -240,7 +211,7 @@
         .table-container {
             overflow-x: auto;
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             margin-bottom: 12px;
         }
@@ -279,8 +250,8 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 3px 8px;
-            border-radius: 12px;
+            padding: 2px 6px;
+            border-radius: 10px;
             font-size: 12px;
             font-weight: bold;
             background: #edf2f7;
@@ -325,6 +296,7 @@
 </div>
 
 <div class="group-container">
+    <!-- 下拉多選按鈕 -->
     <div class="multiselect-dropdown">
         <button class="dropdown-btn" onclick="toggleDropdownMenu()">
             <span id="dropdownBtnText">🔍 選擇要顯示的角色佇列...</span>
@@ -333,6 +305,7 @@
         <div class="dropdown-menu" id="dropdownMenu"></div>
     </div>
 
+    <!-- 呈現被勾選顯示的佇列區域 -->
     <div id="displayQueuesArea"></div>
 </div>
 
@@ -363,8 +336,10 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     
+    // 使用 v5 節點，更新預設標題與繁體字「風」
     const gameRef = db.ref("game_tracker_v5");
 
+    // 預設分組：修正「風」字為繁體字
     const DEFAULT_GROUPS = {
         'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風'],
         'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
