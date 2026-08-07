@@ -30,6 +30,18 @@
             -webkit-user-select: none;
         }
 
+        /* Icon 區域樣式 */
+        .logo-container {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .logo-container img {
+            width: 100%;
+            max-width: 400px; /* 限制最大寬度保持質感 */
+            height: auto;
+        }
+
         h1 {
             text-align: center;
             color: #2c3e50;
@@ -104,181 +116,42 @@
             margin-bottom: 12px;
         }
 
-        /* 自訂多選下拉選單 */
-        .multiselect-dropdown {
-            position: relative;
-            margin-bottom: 8px;
-        }
-
-        .dropdown-btn {
-            width: 100%;
-            padding: 8px 12px;
-            background: #edf2f7;
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #2d3748;
-            text-align: left;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            box-sizing: border-box;
-        }
-
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: #ffffff;
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 100;
-            padding: 6px 0;
-            margin-top: 4px;
-        }
-
+        .multiselect-dropdown { position: relative; margin-bottom: 8px; }
+        .dropdown-btn { width: 100%; padding: 8px 12px; background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; font-weight: bold; color: #2d3748; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .dropdown-menu { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; padding: 6px 0; margin-top: 4px; }
         .dropdown-menu.show { display: block; }
-
-        .dropdown-item {
-            padding: 8px 12px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
+        .dropdown-item { padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .dropdown-item:hover { background: #f7fafc; }
-        .dropdown-item input { cursor: pointer; }
 
-        /* 顯示的佇列卡片 */
-        .visible-queue-group {
-            margin-top: 8px;
-            padding: 6px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            background: #fafafa;
-        }
-
-        .group-title-tag {
-            font-size: 12px;
-            font-weight: bold;
-            color: #4a5568;
-            margin-bottom: 4px;
-            padding-left: 2px;
-        }
-
-        .queue-box {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            padding: 4px;
-            min-height: 38px;
-            border: 1px dashed #cbd5e0;
-            border-radius: 6px;
-            background: #ffffff;
-        }
-
+        .visible-queue-group { margin-top: 8px; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fafafa; }
+        .group-title-tag { font-size: 12px; font-weight: bold; color: #4a5568; margin-bottom: 4px; padding-left: 2px; }
+        .queue-box { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px; min-height: 38px; border: 1px dashed #cbd5e0; border-radius: 6px; background: #ffffff; }
         .sortable-ghost { opacity: 0.3; background: #cbd5e0 !important; }
         .sortable-drag { opacity: 0.9; transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
 
-        .queue-btn {
-            flex: 0 0 auto;
-            padding: 6px 12px;
-            background: #edf2f7;
-            border: 1px solid #cbd5e0;
-            border-radius: 16px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #2d3748;
-            cursor: grab;
-            outline: none;
-            -webkit-appearance: none;
-            touch-action: manipulation;
-        }
+        .queue-btn { flex: 0 0 auto; padding: 6px 12px; background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 16px; font-size: 13px; font-weight: bold; color: #2d3748; cursor: grab; }
+        .queue-box .queue-btn:first-child { background: #feebc8; border-color: #fbd38d; color: #c05621; }
 
-        .queue-box .queue-btn:first-child {
-            background: #feebc8;
-            border-color: #fbd38d;
-            color: #c05621;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            background: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-            margin-bottom: 12px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: center;
-            font-size: 13px;
-        }
-
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 6px;
-            min-width: 110px;
-            height: 42px;
-        }
-
+        .table-container { overflow-x: auto; background: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        th, td { border: 1px solid var(--border-color); padding: 6px; min-width: 110px; height: 42px; }
         th { background: #f7fafc; font-weight: bold; }
         .device-name { font-weight: bold; background: #f7fafc; color: #2c3e50; }
         .history-col { background: #f8fafc; color: #718096; }
-
-        .drop-zone {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            justify-content: center;
-            align-items: center;
-            min-height: 36px;
-            border-radius: 4px;
-        }
-
+        .drop-zone { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: center; min-height: 36px; border-radius: 4px; }
         .drop-zone.active { outline: 2px solid #4a90e2; background: #ebf8ff; }
 
-        .quest-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-            background: #edf2f7;
-            color: #4a5568;
-            border: 1px solid #cbd5e0;
-            cursor: pointer;
-        }
-
+        .quest-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 10px; font-size: 12px; font-weight: bold; background: #edf2f7; color: #4a5568; border: 1px solid #cbd5e0; cursor: pointer; }
         .quest-chip.completed { background: #c6f6d5; color: #22543d; border-color: #9ae6b4; }
         .quest-chip.history-chip { cursor: default; opacity: 0.85; }
-
-        .quest-chip .remove-btn {
-            font-size: 12px;
-            color: #a0aec0;
-            margin-left: 2px;
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .remove-btn { font-size: 12px; color: #a0aec0; margin-left: 2px; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-<h1>🎮 每日任務追蹤器</h1>
+<div class="logo-container">
+    <img src="http://googleusercontent.com/image_generation_content/446" alt="Real Farm Logo">
+</div>
 
 <div class="stats-bar">
     <div class="stats-item">今日任務完成度：<span id="completionRate">0% (0/0)</span></div>
@@ -296,7 +169,6 @@
 </div>
 
 <div class="group-container">
-    <!-- 下拉多選按鈕 -->
     <div class="multiselect-dropdown">
         <button class="dropdown-btn" onclick="toggleDropdownMenu()">
             <span id="dropdownBtnText">🔍 選擇要顯示的角色佇列...</span>
@@ -304,8 +176,6 @@
         </button>
         <div class="dropdown-menu" id="dropdownMenu"></div>
     </div>
-
-    <!-- 呈現被勾選顯示的佇列區域 -->
     <div id="displayQueuesArea"></div>
 </div>
 
@@ -323,6 +193,25 @@
 </div>
 
 <script>
+    // ==========================================
+    // 💡 設定區 (最上方，方便隨時修改)
+    // ==========================================
+    
+    // 在此修改你的角色佇列分組
+    const DEFAULT_GROUPS = {
+        'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
+        'R中': ['8', '34', '9', '36', '14', '10', '12'],
+        'R多': ['1', '11', '13', '16', '17', '32'],        
+        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
+    };
+
+    // 在此修改你的裝置名稱清單
+    const devices = ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'];
+
+    // ==========================================
+    // 程式邏輯 (以下無需動手)
+    // ==========================================
+
     const firebaseConfig = {
         apiKey: "AIzaSyC-5eJaWoM9yQfOtkbjEkm922KQ1Zpbs1A",
         authDomain: "realfarm-todolist.firebaseapp.com",
@@ -335,22 +224,11 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    
-    // 使用 v5 節點，更新預設標題與繁體字「風」
     const gameRef = db.ref("game_tracker_v5");
-
-    // 預設分組：修正「風」字為繁體字
-    const DEFAULT_GROUPS = {
-        'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
-        'R中': ['8', '34', '9', '36', '14', '10', '12'],
-        'R多': ['1', '11', '13', '16', '17', '32'],        
-        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
-    };
 
     let accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
     let selectedGroupNames = new Set(['IOS']);
     let todayInitialGroups = null;
-    const devices = ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'];
     let activeZone = null;
     let sortableInstances = [];
     let isRemoteUpdating = false;
@@ -358,7 +236,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         initTable();
         listenToFirebase();
-
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.multiselect-dropdown')) {
                 document.getElementById('dropdownMenu').classList.remove('show');
@@ -375,34 +252,24 @@
                 saveDataToCloud();
                 return;
             }
-
             isRemoteUpdating = true;
             if (data.groups) accountGroups = data.groups;
             if (data.initialGroups) todayInitialGroups = data.initialGroups;
-
             renderDropdownMenu();
             renderQueuesBySelection();
-
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
-            
             if (data.today) {
                 Object.keys(data.today).forEach(device => {
                     const zone = document.querySelector(`.today-zone[data-device="${device}"]`);
-                    if (zone) {
-                        data.today[device].forEach(item => addChip(zone, item.name, item.group, item.completed, false));
-                    }
+                    if (zone) data.today[device].forEach(item => addChip(zone, item.name, item.group, item.completed, false));
                 });
             }
-
             if (data.yesterday) {
                 Object.keys(data.yesterday).forEach(device => {
                     const zone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-                    if (zone) {
-                        data.yesterday[device].forEach(item => addChip(zone, item.name, item.group, item.completed, true));
-                    }
+                    if (zone) data.yesterday[device].forEach(item => addChip(zone, item.name, item.group, item.completed, true));
                 });
             }
-
             updateStats();
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
@@ -411,142 +278,83 @@
 
     function saveDataToCloud() {
         if (isRemoteUpdating) return;
-
-        const data = {
-            groups: accountGroups,
-            initialGroups: todayInitialGroups || DEFAULT_GROUPS,
-            today: {},
-            yesterday: {}
-        };
-
+        const data = { groups: accountGroups, initialGroups: todayInitialGroups || DEFAULT_GROUPS, today: {}, yesterday: {} };
         document.querySelectorAll('.today-zone').forEach(zone => {
             const key = zone.dataset.device;
             const chips = [];
-            zone.querySelectorAll('.quest-chip').forEach(chip => {
-                chips.push({ name: chip.dataset.name, group: chip.dataset.group, completed: chip.classList.contains('completed') });
-            });
+            zone.querySelectorAll('.quest-chip').forEach(chip => { chips.push({ name: chip.dataset.name, group: chip.dataset.group, completed: chip.classList.contains('completed') }); });
             if (chips.length > 0) data.today[key] = chips;
         });
-
         document.querySelectorAll('.yest-zone').forEach(zone => {
             const key = zone.dataset.device;
             const chips = [];
-            zone.querySelectorAll('.quest-chip').forEach(chip => {
-                chips.push({ name: chip.dataset.name, group: chip.dataset.group, completed: chip.classList.contains('completed') });
-            });
+            zone.querySelectorAll('.quest-chip').forEach(chip => { chips.push({ name: chip.dataset.name, group: chip.dataset.group, completed: chip.classList.contains('completed') }); });
             if (chips.length > 0) data.yesterday[key] = chips;
         });
-
         gameRef.set(data);
     }
 
-    function toggleDropdownMenu() {
-        document.getElementById('dropdownMenu').classList.toggle('show');
-    }
+    function toggleDropdownMenu() { document.getElementById('dropdownMenu').classList.toggle('show'); }
 
     function renderDropdownMenu() {
         const menu = document.getElementById('dropdownMenu');
         menu.innerHTML = '';
-
         Object.keys(accountGroups).forEach(groupName => {
             const label = document.createElement('label');
             label.className = 'dropdown-item';
-
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = selectedGroupNames.has(groupName);
-
             checkbox.onchange = () => {
-                if (checkbox.checked) {
-                    selectedGroupNames.add(groupName);
-                } else {
-                    selectedGroupNames.delete(groupName);
-                }
-                updateDropdownBtnText();
-                renderQueuesBySelection();
+                if (checkbox.checked) selectedGroupNames.add(groupName); else selectedGroupNames.delete(groupName);
+                updateDropdownBtnText(); renderQueuesBySelection();
             };
-
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(`${groupName} (${accountGroups[groupName].length})`));
             menu.appendChild(label);
         });
-
         updateDropdownBtnText();
     }
 
     function updateDropdownBtnText() {
         const btnText = document.getElementById('dropdownBtnText');
-        if (selectedGroupNames.size === 0) {
-            btnText.innerText = '🔍 未選擇任何佇列 (點擊選取)';
-        } else {
-            btnText.innerText = `📋 已顯示 ${selectedGroupNames.size} 個佇列：${Array.from(selectedGroupNames).join(', ')}`;
-        }
+        if (selectedGroupNames.size === 0) btnText.innerText = '🔍 未選擇任何佇列';
+        else btnText.innerText = `📋 已顯示 ${selectedGroupNames.size} 個佇列`;
     }
 
     function renderQueuesBySelection() {
         const area = document.getElementById('displayQueuesArea');
         area.innerHTML = '';
-
         sortableInstances.forEach(inst => inst.destroy());
         sortableInstances = [];
-
         Object.keys(accountGroups).forEach(groupName => {
             if (!selectedGroupNames.has(groupName)) return;
-
             const groupWrapper = document.createElement('div');
             groupWrapper.className = 'visible-queue-group';
-
             const title = document.createElement('div');
             title.className = 'group-title-tag';
             title.innerText = `📌 ${groupName}`;
             groupWrapper.appendChild(title);
-
             const queueBox = document.createElement('div');
             queueBox.className = 'queue-box';
             queueBox.dataset.group = groupName;
-
             accountGroups[groupName].forEach(acc => {
                 const btn = document.createElement('button');
                 btn.className = 'queue-btn';
                 btn.innerText = acc;
                 btn.dataset.name = acc;
                 btn.dataset.group = groupName;
-
                 btn.onclick = () => {
-                    if (!activeZone) {
-                        alert('請先點擊下方表格選取【今日任務】對應裝置的格子！');
-                        return;
-                    }
-
-                    const existingDevice = checkAccountAddedToday(acc);
-                    if (existingDevice) {
-                        alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！不能重複添加！`);
-                        return;
-                    }
-
+                    if (!activeZone) { alert('請先點擊下方表格選取裝置！'); return; }
+                    if (checkAccountAddedToday(acc)) { alert(`⚠️ 角色【${acc}】今天已經存在了！`); return; }
                     addChip(activeZone, acc, groupName, false);
-                    saveDataToCloud();
-                    updateStats();
+                    saveDataToCloud(); updateStats();
                 };
-
                 queueBox.appendChild(btn);
             });
-
             groupWrapper.appendChild(queueBox);
             area.appendChild(groupWrapper);
-
-            const sortable = new Sortable(queueBox, {
-                group: 'shared-accounts', 
-                animation: 150,
-                delay: 150,
-                delayOnTouchOnly: true,
-                ghostClass: 'sortable-ghost',
-                dragClass: 'sortable-drag',
-                onEnd: function () {
-                    syncAllGroupsFromDOM();
-                }
-            });
-            sortableInstances.push(sortable);
+            sortableInstances.push(new Sortable(queueBox, { group: 'shared-accounts', animation: 150, ghostClass: 'sortable-ghost', onEnd: syncAllGroupsFromDOM }));
         });
     }
 
@@ -555,165 +363,83 @@
         document.querySelectorAll('.queue-box').forEach(box => {
             const gName = box.dataset.group;
             const items = [];
-            box.querySelectorAll('.queue-btn').forEach(btn => {
-                btn.dataset.group = gName;
-                items.push(btn.dataset.name);
-            });
+            box.querySelectorAll('.queue-btn').forEach(btn => items.push(btn.dataset.name));
             newGroups[gName] = items;
         });
-        accountGroups = newGroups;
-        saveDataToCloud();
+        accountGroups = newGroups; saveDataToCloud();
     }
 
     function checkAccountAddedToday(accName) {
-        let foundDevice = null;
-        document.querySelectorAll(`.drop-zone.today-zone .quest-chip`).forEach(chip => {
-            if (chip.dataset.name === accName) {
-                foundDevice = chip.closest('.drop-zone').dataset.device;
-            }
-        });
-        return foundDevice;
+        let found = false;
+        document.querySelectorAll(`.today-zone .quest-chip`).forEach(chip => { if (chip.dataset.name === accName) found = true; });
+        return found;
     }
 
     function initTable() {
         const tableBody = document.getElementById('tableBody');
         tableBody.innerHTML = '';
-
         devices.forEach(device => {
             const tr = document.createElement('tr');
-            
-            const deviceTd = document.createElement('td');
-            deviceTd.className = 'device-name';
-            deviceTd.innerText = device;
-            tr.appendChild(deviceTd);
-
-            const todayTd = document.createElement('td');
-            const todayZone = document.createElement('div');
-            todayZone.className = 'drop-zone today-zone';
-            todayZone.dataset.device = device;
-            todayZone.addEventListener('click', (e) => {
-                if (e.target === todayZone) selectZone(todayZone);
-            });
-            todayTd.appendChild(todayZone);
-            tr.appendChild(todayTd);
-
-            const yestTd = document.createElement('td');
-            yestTd.className = 'history-col';
-            const yestZone = document.createElement('div');
-            yestZone.className = 'drop-zone yest-zone';
-            yestZone.dataset.device = device;
-            yestTd.appendChild(yestZone);
-            tr.appendChild(yestTd);
-
+            tr.innerHTML = `<td class="device-name">${device}</td><td><div class="drop-zone today-zone" data-device="${device}" onclick="selectZone(this)"></div></td><td class="history-col"><div class="drop-zone yest-zone" data-device="${device}"></div></td>`;
             tableBody.appendChild(tr);
         });
     }
 
     function selectZone(zone) {
         if (activeZone) activeZone.classList.remove('active');
-        activeZone = zone;
-        activeZone.classList.add('active');
-        
-        document.getElementById('hintBarText').innerText = `選取中裝置：${zone.dataset.device} (今日) ➔ 請點擊上方角色按鈕派單`;
+        activeZone = zone; activeZone.classList.add('active');
+        document.getElementById('hintBarText').innerText = `已選取裝置：${zone.dataset.device}`;
     }
 
     function addChip(zone, accName, groupName, completed = false, isHistory = false) {
         const chip = document.createElement('div');
         chip.className = `quest-chip ${completed ? 'completed' : ''} ${isHistory ? 'history-chip' : ''}`;
-        chip.dataset.name = accName;
-        chip.dataset.group = groupName;
-
-        const textSpan = document.createElement('span');
-        textSpan.innerText = (completed ? 'V ' : '') + accName;
-        chip.appendChild(textSpan);
-
+        chip.dataset.name = accName; chip.dataset.group = groupName;
+        chip.innerHTML = `<span>${(completed ? 'V ' : '') + accName}</span>`;
         if (!isHistory) {
             const removeBtn = document.createElement('span');
             removeBtn.className = 'remove-btn';
             removeBtn.innerHTML = '&times;';
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                chip.remove();
-                saveDataToCloud();
-                updateStats();
-            });
-
+            removeBtn.addEventListener('click', (e) => { e.stopPropagation(); chip.remove(); saveDataToCloud(); updateStats(); });
+            chip.appendChild(removeBtn);
             chip.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isComp = chip.classList.toggle('completed');
-                textSpan.innerText = (isComp ? 'V ' : '') + accName;
-
-                if (isComp && groupName && accountGroups[groupName]) {
-                    rotateAccountToTail(groupName, accName);
-                }
-                saveDataToCloud();
-                updateStats();
+                chip.classList.toggle('completed');
+                chip.querySelector('span').innerText = (chip.classList.contains('completed') ? 'V ' : '') + accName;
+                saveDataToCloud(); updateStats();
             });
-
-            chip.appendChild(removeBtn);
         }
-
         zone.appendChild(chip);
-    }
-
-    function rotateAccountToTail(groupName, accName) {
-        let list = accountGroups[groupName];
-        if (!list) return;
-        const index = list.indexOf(accName);
-        if (index > -1) {
-            list.splice(index, 1); 
-            list.push(accName);   
-            renderQueuesBySelection();
-        }
     }
 
     function updateStats() {
         const calcRate = (selector) => {
             const total = document.querySelectorAll(selector).length;
             const comp = document.querySelectorAll(`${selector}.completed`).length;
-            const percent = total > 0 ? Math.round((comp / total) * 100) : 0;
-            return `${percent}% (${comp}/${total})`;
+            return `${total > 0 ? Math.round((comp / total) * 100) : 0}% (${comp}/${total})`;
         };
-
         document.getElementById('completionRate').innerText = calcRate('.today-zone .quest-chip');
         document.getElementById('yesterdayCompletionRate').innerText = calcRate('.yest-zone .quest-chip');
     }
 
     function shiftToNextDay() {
-        if (confirm('確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天嗎？')) {
+        if (confirm('確定結算昨日任務並開始新的一天嗎？')) {
             devices.forEach(device => {
                 const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-
-                yestZone.innerHTML = '';
-                todayZone.querySelectorAll('.quest-chip').forEach(chip => {
-                    addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.classList.contains('completed'), true);
-                });
-
+                yestZone.innerHTML = todayZone.innerHTML;
+                yestZone.querySelectorAll('.quest-chip').forEach(c => { c.classList.add('history-chip'); c.querySelector('.remove-btn')?.remove(); });
                 todayZone.innerHTML = '';
             });
-
-            todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
-            saveDataToCloud();
-            updateStats();
-            alert('已成功移交至新的一天！');
+            saveDataToCloud(); updateStats();
         }
     }
 
     function resetTodayData() {
-        if (confirm('確定要清空【今日表格】，並將【佇列順序】完全重置為全新的預設分組嗎？')) {
-            document.querySelectorAll('.today-zone').forEach(zone => {
-                zone.innerHTML = '';
-            });
-
+        if (confirm('確定要清空所有資料並重置嗎？')) {
+            document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
             accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-            todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-
-            renderDropdownMenu();
-            renderQueuesBySelection();
-            saveDataToCloud();
-            updateStats();
-            alert('已成功重置為全新預設清單！');
+            saveDataToCloud(); updateStats();
         }
     }
 </script>
