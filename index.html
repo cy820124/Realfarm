@@ -260,7 +260,6 @@
 
         .drop-zone.active { outline: 2px solid #4a90e2; background: #ebf8ff; }
 
-        /* 今日任務晶片 */
         .quest-chip {
             display: inline-flex;
             align-items: center;
@@ -276,10 +275,7 @@
             touch-action: manipulation;
         }
 
-        /* 已完成：綠色 */
         .quest-chip.completed { background: #c6f6d5; color: #22543d; border-color: #9ae6b4; }
-        
-        /* 進行中/完成一半：黃橘色 */
         .quest-chip.in-progress { background: #feebc8; color: #c05621; border-color: #fbd38d; }
 
         .quest-chip.history-chip {
@@ -361,8 +357,10 @@
     const db = firebase.database();
     const gameRef = db.ref("game_tracker_v5");
 
-    let selectedGroupNames = new Set(['IOS']);
+    let selectedGroupNames = new Set(['R少']);
+    
     let todayInitialGroups = null;
+    let accountGroups = null; 
     let activeZone = null;
     let sortableInstances = [];
     let isRemoteUpdating = false;
@@ -377,28 +375,37 @@
         });
     });
 
+    // 💡 直接使用 accountGroups 物anguan 本身的屬性順序，不再額外排序
+    function getSortedGroupNames() {
+        if (!accountGroups) return [];
+        return Object.keys(accountGroups);
+    }
+
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (!data) {
-                todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-                accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-                saveDataToCloud();
-                return;
-            }
             isRemoteUpdating = true;
-            if (data.groups) accountGroups = data.groups;
-            if (data.initialGroups) todayInitialGroups = data.initialGroups;
+
+            if (!data || !data.groups) {
+                accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+                todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+                saveDataToCloud();
+            } else {
+                accountGroups = data.groups;
+                todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+            }
+
             renderDropdownMenu();
             renderQueuesBySelection();
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
-            if (data.today) {
+            
+            if (data && data.today) {
                 Object.keys(data.today).forEach(device => {
                     const zone = document.querySelector(`.today-zone[data-device="${device}"]`);
                     if (zone) data.today[device].forEach(item => addChip(zone, item.name, item.group, item.status || (item.completed ? 'completed' : 'normal'), false));
                 });
             }
-            if (data.yesterday) {
+            if (data && data.yesterday) {
                 Object.keys(data.yesterday).forEach(device => {
                     const zone = document.querySelector(`.yest-zone[data-device="${device}"]`);
                     if (zone) data.yesterday[device].forEach(item => addChip(zone, item.name, item.group, item.status || 'normal', true));
@@ -452,7 +459,7 @@
     function renderDropdownMenu() {
         const menu = document.getElementById('dropdownMenu');
         menu.innerHTML = '';
-        Object.keys(accountGroups).forEach(groupName => {
+        getSortedGroupNames().forEach(groupName => {
             const label = document.createElement('label');
             label.className = 'dropdown-item';
             const checkbox = document.createElement('input');
@@ -482,7 +489,7 @@
         area.innerHTML = '';
         sortableInstances.forEach(inst => inst.destroy());
         sortableInstances = [];
-        Object.keys(accountGroups).forEach(groupName => {
+        getSortedGroupNames().forEach(groupName => {
             if (!selectedGroupNames.has(groupName)) return;
             const groupWrapper = document.createElement('div');
             groupWrapper.className = 'visible-queue-group';
@@ -493,22 +500,24 @@
             const queueBox = document.createElement('div');
             queueBox.className = 'queue-box';
             queueBox.dataset.group = groupName;
-            accountGroups[groupName].forEach(acc => {
-                const btn = document.createElement('button');
-                btn.className = 'queue-btn';
-                btn.innerText = acc;
-                btn.dataset.name = acc;
-                btn.dataset.group = groupName;
-                btn.onclick = () => {
-                    if (!activeZone) { alert('請先點擊下方表格選取【今日任務】對應裝置的格子！'); return; }
-                    const existingDevice = checkAccountAddedToday(acc);
-                    if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
-                    addChip(activeZone, acc, groupName, 'normal', false);
-                    saveDataToCloud();
-                    updateStats();
-                };
-                queueBox.appendChild(btn);
-            });
+            if (accountGroups[groupName]) {
+                accountGroups[groupName].forEach(acc => {
+                    const btn = document.createElement('button');
+                    btn.className = 'queue-btn';
+                    btn.innerText = acc;
+                    btn.dataset.name = acc;
+                    btn.dataset.group = groupName;
+                    btn.onclick = () => {
+                        if (!activeZone) { alert('請先點擊下方表格選取【今日任務】對應裝置的格子！'); return; }
+                        const existingDevice = checkAccountAddedToday(acc);
+                        if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
+                        addChip(activeZone, acc, groupName, 'normal', false);
+                        saveDataToCloud();
+                        updateStats();
+                    };
+                    queueBox.appendChild(btn);
+                });
+            }
             groupWrapper.appendChild(queueBox);
             area.appendChild(groupWrapper);
             const sortable = new Sortable(queueBox, {
@@ -596,7 +605,6 @@
                 updateStats();
             });
 
-            // 點擊事件：切換「已完成」
             let pressTimer = null;
             let isLongPress = false;
 
@@ -604,20 +612,13 @@
                 isLongPress = false;
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
-                    // 長按觸發：切換「進行中/一半」
                     toggleInProgressStatus(chip, accName, groupName);
-                }, 600); // 壓著超過 0.6 秒算長按
+                }, 600);
             });
 
-            chip.addEventListener('touchend', () => {
-                clearTimeout(pressTimer);
-            });
+            chip.addEventListener('touchend', () => { clearTimeout(pressTimer); });
+            chip.addEventListener('touchmove', () => { clearTimeout(pressTimer); });
 
-            chip.addEventListener('touchmove', () => {
-                clearTimeout(pressTimer);
-            });
-
-            // 電腦滑鼠點擊支援
             chip.addEventListener('mousedown', () => {
                 isLongPress = false;
                 pressTimer = setTimeout(() => {
@@ -626,15 +627,12 @@
                 }, 600);
             });
 
-            chip.addEventListener('mouseup', () => {
-                clearTimeout(pressTimer);
-            });
+            chip.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
 
             chip.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (isLongPress) return; // 如果剛剛是長按，就不觸發普通點擊
+                if (isLongPress) return;
 
-                // 普通點擊：切換「已完成」
                 let currentStatus = chip.dataset.status;
                 if (currentStatus === 'completed') {
                     status = 'normal';
@@ -711,25 +709,30 @@
             todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
             saveDataToCloud();
             updateStats();
-            alert('已成功移交至新的一天！');
+            alert('已成功移交至新的一天，並已保留目前的佇列順序！');
         }
     }
 
     function resetTodayData() {
-        if (confirm('確定要清空【今日表格】，並將【佇列順序】完全重置為全新的預設分組嗎？')) {
+        if (confirm('確定要清空【今日表格】，並將【佇列順序】恢復為存檔基準的順序嗎？')) {
             document.querySelectorAll('.today-zone').forEach(zone => { zone.innerHTML = ''; });
-            accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-            todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+            
+            if (todayInitialGroups) {
+                accountGroups = JSON.parse(JSON.stringify(todayInitialGroups));
+            } else {
+                accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+            }
+
             renderDropdownMenu();
             renderQueuesBySelection();
             saveDataToCloud();
             updateStats();
-            alert('已成功重置為全新預設清單！');
+            alert('已成功重置今日資料，並恢復佇列順序！');
         }
     }
 
     // ==========================================
-    // 💡 【設定區】最底部，方便修改
+    // 💡 【設定區】最底部，隨時可依你想要的順序調整
     // ==========================================
 
     const DEFAULT_GROUPS = {
@@ -739,7 +742,6 @@
         'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
     };
 
-    let accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
     const devices = ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'];
 
 </script>
