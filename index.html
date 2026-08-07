@@ -219,7 +219,7 @@
             border-collapse: collapse;
             text-align: center;
             font-size: 13px;
-            table-layout: fixed; /* 強制依照設定的寬度比例分配 */
+            table-layout: fixed;
         }
 
         th, td {
@@ -228,7 +228,6 @@
             height: 42px;
         }
 
-        /* 欄位寬度比例設定： 裝置25% / 今日任務50% / 昨日任務25% */
         .col-device { width: 25%; }
         .col-today { width: 50%; }
         .col-history { width: 25%; }
@@ -237,19 +236,17 @@
         .device-name { font-weight: bold; background: #f7fafc; color: #2c3e50; }
         .history-col { background: #f8fafc; color: #718096; }
 
-        /* 今日任務格子 (寬敞、放大) */
         .drop-zone.today-zone {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             justify-content: center;
             align-items: center;
-            min-height: 60px;
-            padding: 6px;
+            min-height: 50px;
+            padding: 2px;
             border-radius: 4px;
         }
 
-        /* 昨日任務格子 (縮小、精簡) */
         .drop-zone.yest-zone {
             display: flex;
             flex-wrap: wrap;
@@ -263,7 +260,7 @@
 
         .drop-zone.active { outline: 2px solid #4a90e2; background: #ebf8ff; }
 
-        /* 今日任務晶片 (明顯加大，非常好點擊) */
+        /* 今日任務晶片 */
         .quest-chip {
             display: inline-flex;
             align-items: center;
@@ -276,11 +273,15 @@
             color: #4a5568;
             border: 1px solid #cbd5e0;
             cursor: pointer;
+            touch-action: manipulation;
         }
 
+        /* 已完成：綠色 */
         .quest-chip.completed { background: #c6f6d5; color: #22543d; border-color: #9ae6b4; }
+        
+        /* 進行中/完成一半：黃橘色 */
+        .quest-chip.in-progress { background: #feebc8; color: #c05621; border-color: #fbd38d; }
 
-        /* 昨日任務晶片 (縮小、不佔空間) */
         .quest-chip.history-chip {
             padding: 2px 6px;
             font-size: 11px;
@@ -312,7 +313,7 @@
 </div>
 
 <div class="hint-bar">
-    <span id="hintBarText">👉 點擊「今日任務」選取裝置，再點角色按鈕即可派單！</span>
+    <span id="hintBarText">👉 點擊：完成打勾 | 長按：標記進行中(一半) | ✖：移除</span>
     <span class="sync-status" id="syncStatus">☁️ 雲端連線中</span>
 </div>
 
@@ -394,13 +395,13 @@
             if (data.today) {
                 Object.keys(data.today).forEach(device => {
                     const zone = document.querySelector(`.today-zone[data-device="${device}"]`);
-                    if (zone) data.today[device].forEach(item => addChip(zone, item.name, item.group, item.completed, false));
+                    if (zone) data.today[device].forEach(item => addChip(zone, item.name, item.group, item.status || (item.completed ? 'completed' : 'normal'), false));
                 });
             }
             if (data.yesterday) {
                 Object.keys(data.yesterday).forEach(device => {
                     const zone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-                    if (zone) data.yesterday[device].forEach(item => addChip(zone, item.name, item.group, item.completed, true));
+                    if (zone) data.yesterday[device].forEach(item => addChip(zone, item.name, item.group, item.status || 'normal', true));
                 });
             }
             updateStats();
@@ -421,7 +422,12 @@
             const key = zone.dataset.device;
             const chips = [];
             zone.querySelectorAll('.quest-chip').forEach(chip => {
-                chips.push({ name: chip.dataset.name, group: chip.dataset.group, completed: chip.classList.contains('completed') });
+                chips.push({ 
+                    name: chip.dataset.name, 
+                    group: chip.dataset.group, 
+                    status: chip.dataset.status || 'normal',
+                    completed: chip.classList.contains('completed') 
+                });
             });
             if (chips.length > 0) data.today[key] = chips;
         });
@@ -429,7 +435,12 @@
             const key = zone.dataset.device;
             const chips = [];
             zone.querySelectorAll('.quest-chip').forEach(chip => {
-                chips.push({ name: chip.dataset.name, group: chip.dataset.group, completed: chip.classList.contains('completed') });
+                chips.push({ 
+                    name: chip.dataset.name, 
+                    group: chip.dataset.group, 
+                    status: chip.dataset.status || 'normal',
+                    completed: chip.classList.contains('completed') 
+                });
             });
             if (chips.length > 0) data.yesterday[key] = chips;
         });
@@ -492,7 +503,7 @@
                     if (!activeZone) { alert('請先點擊下方表格選取【今日任務】對應裝置的格子！'); return; }
                     const existingDevice = checkAccountAddedToday(acc);
                     if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
-                    addChip(activeZone, acc, groupName, false);
+                    addChip(activeZone, acc, groupName, 'normal', false);
                     saveDataToCloud();
                     updateStats();
                 };
@@ -568,30 +579,100 @@
         document.getElementById('hintBarText').innerText = `選取中裝置：${zone.dataset.device} (今日) ➔ 請點擊上方角色按鈕派單`;
     }
 
-    function addChip(zone, accName, groupName, completed = false, isHistory = false) {
+    function addChip(zone, accName, groupName, status = 'normal', isHistory = false) {
         const chip = document.createElement('div');
-        chip.className = `quest-chip ${completed ? 'completed' : ''} ${isHistory ? 'history-chip' : ''}`;
         chip.dataset.name = accName;
         chip.dataset.group = groupName;
-        const textSpan = document.createElement('span');
-        textSpan.innerText = (completed ? 'V ' : '') + accName;
-        chip.appendChild(textSpan);
+        chip.dataset.status = status;
+
+        updateChipAppearance(chip, status, accName, isHistory);
+
         if (!isHistory) {
-            const removeBtn = document.createElement('span');
-            removeBtn.className = 'remove-btn';
-            removeBtn.innerHTML = '&times;';
-            removeBtn.addEventListener('click', (e) => { e.stopPropagation(); chip.remove(); saveDataToCloud(); updateStats(); });
-            chip.addEventListener('click', (e) => {
+            const removeBtn = chip.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isComp = chip.classList.toggle('completed');
-                textSpan.innerText = (isComp ? 'V ' : '') + accName;
-                if (isComp && groupName && accountGroups[groupName]) rotateAccountToTail(groupName, accName);
+                chip.remove();
                 saveDataToCloud();
                 updateStats();
             });
-            chip.appendChild(removeBtn);
+
+            // 點擊事件：切換「已完成」
+            let pressTimer = null;
+            let isLongPress = false;
+
+            chip.addEventListener('touchstart', () => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    // 長按觸發：切換「進行中/一半」
+                    toggleInProgressStatus(chip, accName, groupName);
+                }, 600); // 壓著超過 0.6 秒算長按
+            });
+
+            chip.addEventListener('touchend', () => {
+                clearTimeout(pressTimer);
+            });
+
+            chip.addEventListener('touchmove', () => {
+                clearTimeout(pressTimer);
+            });
+
+            // 電腦滑鼠點擊支援
+            chip.addEventListener('mousedown', () => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    toggleInProgressStatus(chip, accName, groupName);
+                }, 600);
+            });
+
+            chip.addEventListener('mouseup', () => {
+                clearTimeout(pressTimer);
+            });
+
+            chip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (isLongPress) return; // 如果剛剛是長按，就不觸發普通點擊
+
+                // 普通點擊：切換「已完成」
+                let currentStatus = chip.dataset.status;
+                if (currentStatus === 'completed') {
+                    status = 'normal';
+                } else {
+                    status = 'completed';
+                    if (groupName && accountGroups[groupName]) {
+                        rotateAccountToTail(groupName, accName);
+                    }
+                }
+                chip.dataset.status = status;
+                updateChipAppearance(chip, status, accName, false);
+                saveDataToCloud();
+                updateStats();
+            });
         }
+
         zone.appendChild(chip);
+    }
+
+    function toggleInProgressStatus(chip, accName, groupName) {
+        let currentStatus = chip.dataset.status;
+        let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
+        
+        chip.dataset.status = newStatus;
+        updateChipAppearance(chip, newStatus, accName, false);
+        saveDataToCloud();
+    }
+
+    function updateChipAppearance(chip, status, accName, isHistory) {
+        chip.className = `quest-chip ${isHistory ? 'history-chip' : ''}`;
+        if (status === 'completed') chip.classList.add('completed');
+        if (status === 'in-progress') chip.classList.add('in-progress');
+
+        let prefix = '';
+        if (status === 'completed') prefix = 'V ';
+        if (status === 'in-progress') prefix = '⏳ ';
+
+        chip.innerHTML = `<span>${prefix}${accName}</span>${!isHistory ? '<span class="remove-btn">&times;</span>' : ''}`;
     }
 
     function rotateAccountToTail(groupName, accName) {
@@ -623,7 +704,7 @@
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
                 yestZone.innerHTML = '';
                 todayZone.querySelectorAll('.quest-chip').forEach(chip => {
-                    addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.classList.contains('completed'), true);
+                    addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true);
                 });
                 todayZone.innerHTML = '';
             });
