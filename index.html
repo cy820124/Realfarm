@@ -341,16 +341,16 @@
 
     // 預設分組：修正「風」字為繁體字
     const DEFAULT_GROUPS = {
-        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風'],
         'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
         'R中': ['8', '34', '9', '36', '14', '10', '12'],
-        'R多': ['1', '11', '13', '16', '17', '32']
+        'R多': ['1', '11', '13', '16', '17', '32'],        
+        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
     };
 
     let accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
     let selectedGroupNames = new Set(['IOS']);
     let todayInitialGroups = null;
-    const devices = ['15', 'C3', 'Realme', 'Pixel', 'Sony', 'S10', 'IPad', 'Se', 'IPhone13'];
+    const devices = ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'];
     let activeZone = null;
     let sortableInstances = [];
     let isRemoteUpdating = false;
