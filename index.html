@@ -102,7 +102,6 @@
         .btn-next-day { background-color: #3182ce; color: white; }
         .btn-reset-today { background-color: #dd6b20; color: white; }
 
-        /* 今日未完成總覽專用區塊样式 */
         .pending-overview-container {
             background: #fffaf0;
             border: 1px solid #feebc8;
@@ -232,6 +231,14 @@
             outline: none;
             -webkit-appearance: none;
             touch-action: manipulation;
+        }
+
+        /* 💡 已經分配到今日任務的角色按鈕樣式 (灰階、半透明、提示已指派) */
+        .queue-btn.assigned {
+            background: #e2e8f0;
+            color: #a0aec0;
+            border-color: #cbd5e0;
+            opacity: 0.7;
         }
 
         .table-container {
@@ -459,7 +466,8 @@
                 });
             }
             updateStats();
-            updatePendingOverview(); // 🔄 更新未完成總覽區
+            updatePendingOverview();
+            updateQueueAssignedStatus(); // 🔄 更新上方佇列按鈕的指派狀態顏色
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
@@ -563,6 +571,7 @@
                         saveDataToCloud();
                         updateStats();
                         updatePendingOverview();
+                        updateQueueAssignedStatus();
                     };
                     queueBox.appendChild(btn);
                 });
@@ -580,6 +589,24 @@
             });
             sortableInstances.push(sortable);
         });
+        updateQueueAssignedStatus();
+    }
+
+    // 💡 檢查並更新上方佇列按鈕的背景顏色（已指派的變灰）
+    function updateQueueAssignedStatus() {
+        const assignedNames = new Set();
+        document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+            assignedNames.add(chip.dataset.name);
+        });
+
+        document.querySelectorAll('.queue-btn').forEach(btn => {
+            const accName = btn.dataset.name;
+            if (assignedNames.has(accName)) {
+                btn.classList.add('assigned');
+            } else {
+                btn.classList.remove('assigned');
+            }
+        });
     }
 
     function syncAllGroupsFromDOM() {
@@ -592,6 +619,7 @@
         });
         accountGroups = newGroups;
         saveDataToCloud();
+        updateQueueAssignedStatus();
     }
 
     function checkAccountAddedToday(accName) {
@@ -653,6 +681,7 @@
                 saveDataToCloud();
                 updateStats();
                 updatePendingOverview();
+                updateQueueAssignedStatus();
             });
 
             setupChipInteractions(chip, accName, groupName);
@@ -661,7 +690,6 @@
         zone.appendChild(chip);
     }
 
-    // 💡 統一封裝晶片的互動事件（支援主表格與總覽區同步連動）
     function setupChipInteractions(chip, accName, groupName) {
         let pressTimer = null;
         let isLongPress = false;
@@ -702,7 +730,6 @@
     }
 
     function toggleChipStatus(targetChip, accName, groupName, newStatus) {
-        // 同步更新所有同名稱與群組的晶片（主表格與總覽區雙向連動）
         document.querySelectorAll(`.quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => {
             c.dataset.status = newStatus;
             updateChipAppearance(c, newStatus, accName, false);
@@ -711,6 +738,7 @@
         saveDataToCloud();
         updateStats();
         updatePendingOverview();
+        updateQueueAssignedStatus();
     }
 
     function updateChipAppearance(chip, status, accName, isHistory) {
@@ -722,7 +750,6 @@
         if (status === 'completed') prefix = 'V ';
         if (status === 'in-progress') prefix = '⏳ ';
 
-        // 如果是在總覽區，顯示裝置標籤
         let deviceTagHtml = '';
         if (chip.dataset.device && !isHistory) {
             deviceTagHtml = `<span class="device-tag">${chip.dataset.device}</span>`;
@@ -730,22 +757,20 @@
 
         chip.innerHTML = `${deviceTagHtml}<span>${prefix}${accName}</span>${!isHistory ? '<span class="remove-btn">&times;</span>' : ''}`;
 
-        // 綁定總覽區專屬的移除按鈕事件
         const removeBtn = chip.querySelector('.remove-btn');
         if (removeBtn && !removeBtn.hasAttribute('data-bound')) {
             removeBtn.setAttribute('data-bound', 'true');
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // 同步刪除主表格中的對應晶片
                 document.querySelectorAll(`.today-zone .quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => c.remove());
                 saveDataToCloud();
                 updateStats();
                 updatePendingOverview();
+                updateQueueAssignedStatus();
             });
         }
     }
 
-    // 💡 即時生成未完成總覽區晶片
     function updatePendingOverview() {
         const box = document.getElementById('pendingOverviewBox');
         const countTag = document.getElementById('pendingCount');
@@ -822,6 +847,7 @@
             saveDataToCloud();
             updateStats();
             updatePendingOverview();
+            updateQueueAssignedStatus();
             alert('已成功移交至新的一天，並已保留目前的佇列順序！');
         }
     }
@@ -841,6 +867,7 @@
             saveDataToCloud();
             updateStats();
             updatePendingOverview();
+            updateQueueAssignedStatus();
             alert('已成功重置今日資料，並恢復佇列順序！');
         }
     }
