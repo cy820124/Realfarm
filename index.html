@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realfarm R幣任務紀錄</title>
     
-    <!-- PWA 設定連結 (確保手機可辨識 App，網頁本身不顯示圖片) -->
+    <!-- PWA 設定連結 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a90e2">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon.png">
 
     <!-- SortableJS 拖曳套件 -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -193,11 +193,11 @@
 
         .queue-btn {
             flex: 0 0 auto;
-            padding: 6px 12px;
+            padding: 8px 14px;
             background: #edf2f7;
             border: 1px solid #cbd5e0;
-            border-radius: 16px;
-            font-size: 13px;
+            border-radius: 18px;
+            font-size: 14px;
             font-weight: bold;
             color: #2d3748;
             cursor: grab;
@@ -205,12 +205,6 @@
             -webkit-appearance: none;
             touch-action: manipulation;
         }
-
-        /*.queue-box .queue-btn:first-child {
-            background: #feebc8;
-            border-color: #fbd38d;
-            color: #c05621;
-        }*/
 
         .table-container {
             overflow-x: auto;
@@ -225,38 +219,58 @@
             border-collapse: collapse;
             text-align: center;
             font-size: 13px;
+            table-layout: fixed; /* 強制依照設定的寬度比例分配 */
         }
 
         th, td {
             border: 1px solid var(--border-color);
             padding: 6px;
-            min-width: 110px;
             height: 42px;
         }
+
+        /* 欄位寬度比例設定： 裝置25% / 今日任務50% / 昨日任務25% */
+        .col-device { width: 25%; }
+        .col-today { width: 50%; }
+        .col-history { width: 25%; }
 
         th { background: #f7fafc; font-weight: bold; }
         .device-name { font-weight: bold; background: #f7fafc; color: #2c3e50; }
         .history-col { background: #f8fafc; color: #718096; }
 
-        .drop-zone {
+        /* 今日任務格子 (寬敞、放大) */
+        .drop-zone.today-zone {
             display: flex;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            min-height: 60px;
+            padding: 6px;
+            border-radius: 4px;
+        }
+
+        /* 昨日任務格子 (縮小、精簡) */
+        .drop-zone.yest-zone {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
             justify-content: center;
             align-items: center;
             min-height: 36px;
+            padding: 2px;
             border-radius: 4px;
         }
 
         .drop-zone.active { outline: 2px solid #4a90e2; background: #ebf8ff; }
 
+        /* 今日任務晶片 (明顯加大，非常好點擊) */
         .quest-chip {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 12px;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 16px;
+            font-size: 15px;
             font-weight: bold;
             background: #edf2f7;
             color: #4a5568;
@@ -265,15 +279,23 @@
         }
 
         .quest-chip.completed { background: #c6f6d5; color: #22543d; border-color: #9ae6b4; }
-        .quest-chip.history-chip { cursor: default; opacity: 0.85; }
+
+        /* 昨日任務晶片 (縮小、不佔空間) */
+        .quest-chip.history-chip {
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 10px;
+            cursor: default;
+            opacity: 0.85;
+        }
 
         .quest-chip .remove-btn {
-            font-size: 12px;
+            font-size: 16px;
             color: #a0aec0;
-            margin-left: 2px;
+            margin-left: 4px;
             border-radius: 50%;
-            width: 14px;
-            height: 14px;
+            width: 18px;
+            height: 18px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -314,9 +336,9 @@
     <table>
         <thead>
             <tr>
-                <th>裝置</th>
-                <th>今日任務 (可編輯)</th>
-                <th class="history-col">昨日任務 (歷史參考)</th>
+                <th class="col-device">裝置</th>
+                <th class="col-today">今日任務 (可編輯)</th>
+                <th class="col-history history-col">昨日任務</th>
             </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -324,7 +346,6 @@
 </div>
 
 <script>
-    // 系統運作邏輯
     const firebaseConfig = {
         apiKey: "AIzaSyC-5eJaWoM9yQfOtkbjEkm922KQ1Zpbs1A",
         authDomain: "realfarm-todolist.firebaseapp.com",
@@ -518,10 +539,11 @@
         devices.forEach(device => {
             const tr = document.createElement('tr');
             const deviceTd = document.createElement('td');
-            deviceTd.className = 'device-name';
+            deviceTd.className = 'device-name col-device';
             deviceTd.innerText = device;
             tr.appendChild(deviceTd);
             const todayTd = document.createElement('td');
+            todayTd.className = 'col-today';
             const todayZone = document.createElement('div');
             todayZone.className = 'drop-zone today-zone';
             todayZone.dataset.device = device;
@@ -529,7 +551,7 @@
             todayTd.appendChild(todayZone);
             tr.appendChild(todayTd);
             const yestTd = document.createElement('td');
-            yestTd.className = 'history-col';
+            yestTd.className = 'history-col col-history';
             const yestZone = document.createElement('div');
             yestZone.className = 'drop-zone yest-zone';
             yestZone.dataset.device = device;
