@@ -102,6 +102,34 @@
         .btn-next-day { background-color: #3182ce; color: white; }
         .btn-reset-today { background-color: #dd6b20; color: white; }
 
+        /* 今日未完成總覽專用區塊样式 */
+        .pending-overview-container {
+            background: #fffaf0;
+            border: 1px solid #feebc8;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+        }
+
+        .pending-overview-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #c05621;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pending-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 38px;
+            align-items: center;
+        }
+
         .group-container {
             background: var(--card-bg);
             padding: 10px;
@@ -297,6 +325,15 @@
             align-items: center;
             justify-content: center;
         }
+
+        .device-tag {
+            font-size: 11px;
+            background: rgba(0,0,0,0.08);
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-right: 2px;
+            color: inherit;
+        }
     </style>
 </head>
 <body>
@@ -316,6 +353,17 @@
 <div class="toolbar">
     <button class="btn btn-next-day" onclick="shiftToNextDay()">🌅 結算昨日 ➔ 開始新的一天</button>
     <button class="btn btn-reset-today" onclick="resetTodayData()">↺ 重設今日資料與佇列順序</button>
+</div>
+
+<!-- 📌 今日未完成總覽區 -->
+<div class="pending-overview-container">
+    <div class="pending-overview-title">
+        <span>🔥 今日未完成 / 進行中總覽 (點擊可直接打勾)</span>
+        <span id="pendingCount" style="font-size: 12px; background: #fbd38d; color: #744210; padding: 2px 6px; border-radius: 4px;">0 項未完成</span>
+    </div>
+    <div class="pending-box" id="pendingOverviewBox">
+        <span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務，太棒了！</span>
+    </div>
 </div>
 
 <div class="group-container">
@@ -375,7 +423,6 @@
         });
     });
 
-    // 💡 直接使用 accountGroups 物anguan 本身的屬性順序，不再額外排序
     function getSortedGroupNames() {
         if (!accountGroups) return [];
         return Object.keys(accountGroups);
@@ -412,6 +459,7 @@
                 });
             }
             updateStats();
+            updatePendingOverview(); // 🔄 更新未完成總覽區
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
@@ -514,6 +562,7 @@
                         addChip(activeZone, acc, groupName, 'normal', false);
                         saveDataToCloud();
                         updateStats();
+                        updatePendingOverview();
                     };
                     queueBox.appendChild(btn);
                 });
@@ -603,62 +652,65 @@
                 chip.remove();
                 saveDataToCloud();
                 updateStats();
+                updatePendingOverview();
             });
 
-            let pressTimer = null;
-            let isLongPress = false;
-
-            chip.addEventListener('touchstart', () => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    toggleInProgressStatus(chip, accName, groupName);
-                }, 600);
-            });
-
-            chip.addEventListener('touchend', () => { clearTimeout(pressTimer); });
-            chip.addEventListener('touchmove', () => { clearTimeout(pressTimer); });
-
-            chip.addEventListener('mousedown', () => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    toggleInProgressStatus(chip, accName, groupName);
-                }, 600);
-            });
-
-            chip.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
-
-            chip.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (isLongPress) return;
-
-                let currentStatus = chip.dataset.status;
-                if (currentStatus === 'completed') {
-                    status = 'normal';
-                } else {
-                    status = 'completed';
-                    if (groupName && accountGroups[groupName]) {
-                        rotateAccountToTail(groupName, accName);
-                    }
-                }
-                chip.dataset.status = status;
-                updateChipAppearance(chip, status, accName, false);
-                saveDataToCloud();
-                updateStats();
-            });
+            setupChipInteractions(chip, accName, groupName);
         }
 
         zone.appendChild(chip);
     }
 
-    function toggleInProgressStatus(chip, accName, groupName) {
-        let currentStatus = chip.dataset.status;
-        let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
-        
-        chip.dataset.status = newStatus;
-        updateChipAppearance(chip, newStatus, accName, false);
+    // 💡 統一封裝晶片的互動事件（支援主表格與總覽區同步連動）
+    function setupChipInteractions(chip, accName, groupName) {
+        let pressTimer = null;
+        let isLongPress = false;
+
+        chip.addEventListener('touchstart', () => {
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                toggleChipStatus(chip, accName, groupName, 'in-progress');
+            }, 600);
+        });
+
+        chip.addEventListener('touchend', () => { clearTimeout(pressTimer); });
+        chip.addEventListener('touchmove', () => { clearTimeout(pressTimer); });
+
+        chip.addEventListener('mousedown', () => {
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                toggleChipStatus(chip, accName, groupName, 'in-progress');
+            }, 600);
+        });
+
+        chip.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
+
+        chip.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isLongPress) return;
+
+            let currentStatus = chip.dataset.status;
+            let newStatus = (currentStatus === 'completed') ? 'normal' : 'completed';
+            
+            if (newStatus === 'completed' && groupName && accountGroups[groupName]) {
+                rotateAccountToTail(groupName, accName);
+            }
+            toggleChipStatus(chip, accName, groupName, newStatus);
+        });
+    }
+
+    function toggleChipStatus(targetChip, accName, groupName, newStatus) {
+        // 同步更新所有同名稱與群組的晶片（主表格與總覽區雙向連動）
+        document.querySelectorAll(`.quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => {
+            c.dataset.status = newStatus;
+            updateChipAppearance(c, newStatus, accName, false);
+        });
+
         saveDataToCloud();
+        updateStats();
+        updatePendingOverview();
     }
 
     function updateChipAppearance(chip, status, accName, isHistory) {
@@ -670,7 +722,67 @@
         if (status === 'completed') prefix = 'V ';
         if (status === 'in-progress') prefix = '⏳ ';
 
-        chip.innerHTML = `<span>${prefix}${accName}</span>${!isHistory ? '<span class="remove-btn">&times;</span>' : ''}`;
+        // 如果是在總覽區，顯示裝置標籤
+        let deviceTagHtml = '';
+        if (chip.dataset.device && !isHistory) {
+            deviceTagHtml = `<span class="device-tag">${chip.dataset.device}</span>`;
+        }
+
+        chip.innerHTML = `${deviceTagHtml}<span>${prefix}${accName}</span>${!isHistory ? '<span class="remove-btn">&times;</span>' : ''}`;
+
+        // 綁定總覽區專屬的移除按鈕事件
+        const removeBtn = chip.querySelector('.remove-btn');
+        if (removeBtn && !removeBtn.hasAttribute('data-bound')) {
+            removeBtn.setAttribute('data-bound', 'true');
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 同步刪除主表格中的對應晶片
+                document.querySelectorAll(`.today-zone .quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => c.remove());
+                saveDataToCloud();
+                updateStats();
+                updatePendingOverview();
+            });
+        }
+    }
+
+    // 💡 即時生成未完成總覽區晶片
+    function updatePendingOverview() {
+        const box = document.getElementById('pendingOverviewBox');
+        const countTag = document.getElementById('pendingCount');
+        box.innerHTML = '';
+
+        let pendingChips = [];
+        document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+            const status = chip.dataset.status || 'normal';
+            if (status !== 'completed') {
+                const device = chip.closest('.drop-zone').dataset.device;
+                pendingChips.push({
+                    name: chip.dataset.name,
+                    group: chip.dataset.group,
+                    status: status,
+                    device: device
+                });
+            }
+        });
+
+        countTag.innerText = `${pendingChips.length} 項未完成`;
+
+        if (pendingChips.length === 0) {
+            box.innerHTML = '<span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務，太棒了！</span>';
+            return;
+        }
+
+        pendingChips.forEach(item => {
+            const chip = document.createElement('div');
+            chip.dataset.name = item.name;
+            chip.dataset.group = item.group;
+            chip.dataset.status = item.status;
+            chip.dataset.device = item.device;
+
+            updateChipAppearance(chip, item.status, item.name, false);
+            setupChipInteractions(chip, item.name, item.group);
+            box.appendChild(chip);
+        });
     }
 
     function rotateAccountToTail(groupName, accName) {
@@ -709,6 +821,7 @@
             todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
             saveDataToCloud();
             updateStats();
+            updatePendingOverview();
             alert('已成功移交至新的一天，並已保留目前的佇列順序！');
         }
     }
@@ -727,6 +840,7 @@
             renderQueuesBySelection();
             saveDataToCloud();
             updateStats();
+            updatePendingOverview();
             alert('已成功重置今日資料，並恢復佇列順序！');
         }
     }
