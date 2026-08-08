@@ -610,7 +610,7 @@
     let adWatchedData = {}; 
     let coinData = {}; 
     let fishingCdData = {}; 
-    const FISHING_CD_DURATION = 10 * 60 * 1000;
+    const FISHING_CD_DURATION = 15 * 60 * 1000;
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -625,7 +625,7 @@
             if (modal.classList.contains('show')) {
                 renderFishModalContent();
             }
-        }, 60000);
+        }, 1000);
     });
 
     function getSortedGroupNames() {
@@ -783,6 +783,9 @@
                 let isCdA = now < cdA;
                 let isCdB = now < cdB;
 
+                if (isCdA && isCdB) {
+                    return cdA - cdB;
+                }
                 if (isCdA !== isCdB) {
                     return isCdA ? 1 : -1;
                 }
@@ -803,14 +806,17 @@
             accounts.forEach(acc => {
                 const cdEnd = fishingCdData[acc] || 0;
                 const isCd = now < cdEnd;
-                let remainMin = Math.ceil((cdEnd - now) / 60000);
+                let remainSec = Math.ceil((cdEnd - now) / 1000);
+                let remainMin = Math.floor(remainSec / 60);
+                let remainS = remainSec % 60;
 
                 const btn = document.createElement('button');
                 btn.className = `fish-btn ${isCd ? 'cooldown' : ''}`;
                 
                 let htmlContent = `<span>${acc}</span>`;
-                if (isCd && remainMin > 0) {
-                    htmlContent += `<span class="cd-text">${remainMin}分</span>`;
+                if (isCd && remainSec > 0) {
+                    let timeStr = remainMin > 0 ? `${remainMin}分` : `${remainS}秒`;
+                    htmlContent += `<span class="cd-text">${timeStr}</span>`;
                 }
                 btn.innerHTML = htmlContent;
 
@@ -1153,13 +1159,14 @@
         });
 
         const titleText = document.getElementById('overviewTitleText');
-        titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
+        titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`
 
         if (pendingChips.length === 0) {
             box.innerHTML = ''; 
             return;
         }
 
+        pendingChips.items.forEach(item => {}); // safe guard
         pendingChips.forEach(item => {
             const chip = document.createElement('div');
             chip.dataset.name = item.name;
@@ -1167,7 +1174,7 @@
             chip.dataset.status = item.status;
             chip.dataset.device = item.device;
 
-            updateChipAppearance(chip, item.status, item.name, false, true, item.group);
+            updateChipAppearance(chip, item.status, item.name, item.index ? false : false, true, item.group);
             setupChipInteractions(chip, item.name, item.group, true);
             box.appendChild(chip);
         });
@@ -1212,7 +1219,7 @@
             devices.forEach(device => {
                 const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-                yestZone.innerHTML = '';
+                yestZone.innerHTML = `.`; yestZone.innerHTML = '';
                 todayZone.querySelectorAll('.quest-chip').forEach(chip => {
                     addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true);
                 });
