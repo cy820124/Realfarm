@@ -672,7 +672,8 @@
                 activeDateStr = data.activeDate || todayFormatted;
                 adWatchedData = data.adWatched || {};
                 coinData = data.coins || {};
-                fishingCdData = data.fishingCd || {};
+                // 改用獨立的 fishing_cd_v2 欄位，並強制轉換成字串鍵值對應，避免數字/文字 key 衝突
+                fishingCdData = data.fishing_cd_v2 || {};
             }
 
             initTable();
@@ -727,7 +728,7 @@
             activeDate: activeDateStr,
             adWatched: adWatchedData,
             coins: coinData,
-            fishingCd: fishingCdData,
+            fishing_cd_v2: fishingCdData, // 使用專屬的獨立欄位儲存
             today: {},
             yesterday: {}
         };
@@ -786,8 +787,11 @@
             let accounts = [...accountGroups[groupName]];
 
             accounts.sort((a, b) => {
-                let cdA = fishingCdData[a] || 0;
-                let cdB = fishingCdData[b] || 0;
+                // 將帳號轉為字串作為 Key 查詢，徹底解決數字與文字 key 排序/比對衝突的問題
+                let keyA = String(a);
+                let keyB = String(b);
+                let cdA = fishingCdData[keyA] || 0;
+                let cdB = fishingCdData[keyB] || 0;
                 let isCdA = now < cdA;
                 let isCdB = now < cdB;
 
@@ -812,7 +816,8 @@
             grid.className = 'fish-grid';
 
             accounts.forEach(acc => {
-                const cdEnd = fishingCdData[acc] || 0;
+                const key = String(acc);
+                const cdEnd = fishingCdData[key] || 0;
                 const isCd = now < cdEnd;
                 let remainSec = Math.ceil((cdEnd - now) / 1000);
                 let remainMin = Math.floor(remainSec / 60);
@@ -829,10 +834,9 @@
                 btn.innerHTML = htmlContent;
 
                 btn.onclick = () => {
-                    // 💡 立即在本地更新冷卻時間並重新渲染畫面，不等待雲端非同步返回，解決點擊延遲問題
-                    fishingCdData[acc] = Date.now() + FISHING_CD_DURATION;
-                    renderFishModalContent();
-                    saveDataToCloud();
+                    // 點擊後直接更新專屬的 fishing_cd_v2 欄位並寫入雲端
+                    fishingCdData[key] = Date.now() + FISHING_CD_DURATION;
+                    gameRef.update({ fishing_cd_v2: fishingCdData });
                 };
 
                 grid.appendChild(btn);
