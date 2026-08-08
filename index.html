@@ -74,25 +74,88 @@
             color: white;
         }
 
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            gap: 10px;
-        }
-
         .btn {
-            padding: 8px 14px;
+            padding: 10px 16px;
             border: none;
             border-radius: 6px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        .btn-next-day { background-color: #3182ce; color: white; }
-        .btn-reset-today { background-color: #dd6b20; color: white; }
+        .btn-next-day { background-color: #3182ce; color: white; width: 100%; }
+
+        /* 📺 可收合式廣告面版樣式 */
+        .ad-collapsible-container {
+            background: #ebf8ff;
+            border: 1px solid #bee3f8;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .ad-header-bar {
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #2b6cb0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .ad-header-bar:hover { background: #e2e8f0; }
+        .ad-content-body {
+            display: none;
+            padding: 10px 12px;
+            border-top: 1px solid #bee3f8;
+            background: #ffffff;
+        }
+        .ad-content-body.show { display: block; }
+        .ad-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .ad-chip {
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: bold;
+            background: #edf2f7;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+        .ad-chip.watched {
+            background: #c6f6d5;
+            color: #22543d;
+            border-color: #9ae6b4;
+        }
+
+        /* 💡 底部按鈕群組區塊（結算與重設） */
+        .bottom-actions-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 25px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+        .btn-reset-today { 
+            background-color: #edf2f7; 
+            color: #718096; 
+            border: 1px solid #cbd5e0; 
+            font-size: 12px; 
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-reset-today:hover { background-color: #e2e8f0; color: #4a5568; }
 
         .pending-overview-container {
             background: #fffaf0;
@@ -344,9 +407,18 @@
     <span class="sync-status" id="syncStatus">☁️ 雲端連線中</span>
 </div>
 
-<div class="toolbar">
-    <button class="btn btn-next-day" onclick="shiftToNextDay()">🌅 結算昨日 ➔ 開始新的一天</button>
-    <button class="btn btn-reset-today" onclick="resetTodayData()">↺ 重設今日資料與佇列順序</button>
+<!-- 📺 可收合式每日廣告賺R幣區塊 -->
+<div class="ad-collapsible-container">
+    <div class="ad-header-bar" onclick="toggleAdPanel()">
+        <span id="adPanelTitle">📺 今日廣告賺 R 幣記錄 (已完成: 0/0)</span>
+        <span id="adToggleArrow">▼ 展開</span>
+    </div>
+    <div class="ad-content-body" id="adContentBody">
+        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 包含所有 R 幣帳號與 iOS 帳號，點擊即可切換今日是否已看完廣告：</div>
+        <div class="ad-grid" id="adGridArea">
+            <!-- 動態生成所有帳號的廣告按鈕 -->
+        </div>
+    </div>
 </div>
 
 <!-- 📌 今日未完成總覽區 -->
@@ -384,6 +456,12 @@
     </table>
 </div>
 
+<!-- 💡 結算與重設按鈕區塊 -->
+<div class="bottom-actions-container">
+    <button class="btn btn-next-day" onclick="shiftToNextDay()">🌅 結算昨日 ➔ 開始新的一天</button>
+    <button class="btn-reset-today" onclick="resetTodayData()">↺ 重設今日資料與佇列順序</button>
+</div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyC-5eJaWoM9yQfOtkbjEkm922KQ1Zpbs1A",
@@ -408,6 +486,8 @@
     let sortableInstances = [];
     let isRemoteUpdating = false;
     let activeDateStr = ''; 
+    let adWatchedData = {}; 
+    let coinData = {}; // 記錄各帳號的 R 幣數量
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -443,17 +523,22 @@
                 todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
                 devices = DEFAULT_DEVICES;
                 activeDateStr = todayFormatted;
+                adWatchedData = {};
+                coinData = {};
                 saveDataToCloud();
             } else {
                 accountGroups = data.groups || DEFAULT_GROUPS;
                 todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-                devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES; // 💡 確保正確抓取後台的最新裝置清單
+                devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES;
                 activeDateStr = data.activeDate || todayFormatted;
+                adWatchedData = data.adWatched || {};
+                coinData = data.coins || {};
             }
 
-            initTable(); // 💡 每次雲端資料一變動，表格會自動用最新的 devices 重新生成
+            initTable();
             renderDropdownMenu();
             renderQueuesBySelection();
+            renderAdPanel(); 
             updateDateLabels(); 
             
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
@@ -496,6 +581,8 @@
             groups: accountGroups,
             initialGroups: todayInitialGroups || {},
             activeDate: activeDateStr,
+            adWatched: adWatchedData,
+            coins: coinData,
             today: {},
             yesterday: {}
         };
@@ -526,6 +613,58 @@
             if (chips.length > 0) data.yesterday[key] = chips;
         });
         gameRef.update(data);
+    }
+
+    function toggleAdPanel() {
+        const body = document.getElementById('adContentBody');
+        const arrow = document.getElementById('adToggleArrow');
+        body.classList.toggle('show');
+        if (body.classList.contains('show')) {
+            arrow.innerText = '▲ 收合';
+        } else {
+            arrow.innerText = '▼ 展開';
+        }
+    }
+
+    function renderAdPanel() {
+        const grid = document.getElementById('adGridArea');
+        grid.innerHTML = '';
+
+        let allAccountsList = [];
+        if (accountGroups) {
+            Object.keys(accountGroups).forEach(gName => {
+                accountGroups[gName].forEach(acc => {
+                    allAccountsList.push({ name: acc, group: gName });
+                });
+            });
+        }
+
+        allAccountsList.sort((a, b) => {
+            let numA = Number(a.name);
+            let numB = Number(b.name);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            return a.name.localeCompare(b.name, 'zh-Hant');
+        });
+
+        let watchedCount = 0;
+        let totalCount = allAccountsList.length;
+
+        allAccountsList.forEach(item => {
+            const isWatched = !!adWatchedData[item.name];
+            if (isWatched) watchedCount++;
+
+            const chip = document.createElement('div');
+            chip.className = `ad-chip ${isWatched ? 'watched' : ''}`;
+            chip.innerText = item.name;
+            chip.onclick = () => {
+                adWatchedData[item.name] = !isWatched;
+                saveDataToCloud();
+                renderAdPanel();
+            };
+            grid.appendChild(chip);
+        });
+
+        document.getElementById('adPanelTitle').innerText = `📺 今日廣告賺 R 幣記錄 (已完成: ${watchedCount}/${totalCount})`;
     }
 
     function toggleDropdownMenu() { document.getElementById('dropdownMenu').classList.toggle('show'); }
@@ -846,7 +985,18 @@
 
     function shiftToNextDay() {
         const nextDayStr = getFormattedDate(new Date());
-        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？`)) {
+        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動為所有「今天有看過廣告」的帳號 R 幣數量 +1！`)) {
+            
+            // 💡 自動幫今天有看廣告的帳號 R 幣 +1
+            if (adWatchedData && coinData) {
+                Object.keys(adWatchedData).forEach(accName => {
+                    if (adWatchedData[accName] === true) {
+                        let currentCoin = Number(coinData[accName]) || 0;
+                        coinData[accName] = currentCoin + 1;
+                    }
+                });
+            }
+
             devices.forEach(device => {
                 const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
@@ -858,12 +1008,14 @@
             });
             todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
             activeDateStr = nextDayStr; 
+            adWatchedData = {}; 
             saveDataToCloud();
+            renderAdPanel();
             updateDateLabels();
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
-            alert(`已成功移交至新的一天（${activeDateStr}），並已保留目前的佇列順序！`);
+            alert(`🎉 已成功移交至新的一天（${activeDateStr}）！\n✨ 有看廣告的帳號 R 幣已自動 +1 並同步至後台資料庫！`);
         }
     }
 
