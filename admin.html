@@ -29,15 +29,16 @@
         }
         h2 { font-size: 15px; color: #4a5568; margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
         .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
-        input, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e0; box-sizing: border-box; }
-        input { flex: 1; }
+        input, textarea, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e0; box-sizing: border-box; }
+        input, textarea { flex: 1; }
+        /* 💡 調整文字框高度與寬度，讓編輯更舒適 */
+        textarea { resize: vertical; height: 160px; font-family: monospace; width: 100%; }
         button { background: #3182ce; color: white; border: none; cursor: pointer; font-weight: bold; }
         button.danger { background: #e53e3e; }
-        button.secondary { background: #718096; font-size: 12px; padding: 4px 8px; }
+        button.secondary { background: #718096; font-size: 12px; padding: 6px 14px; }
+        button.success { background: #38a169; }
         
-        .editable-panel {
-            display: none; 
-        }
+        .editable-panel { display: none; }
         .add-account-panel {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -47,12 +48,7 @@
             margin-bottom: 10px;
             display: none;
         }
-        .add-account-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: #4a5568;
-            margin-bottom: 8px;
-        }
+        .add-account-title { font-size: 13px; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
 
         .item-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .badge {
@@ -82,7 +78,20 @@
 <h1>⚙️ 後台管理中心</h1>
 
 <div style="text-align: right; margin-bottom: 15px;">
-    <button class="secondary" onclick="toggleEditMode()" id="editModeBtn" style="padding: 6px 14px; font-size: 13px;">🔓 開啟新增/刪除模式</button>
+    <button class="secondary" onclick="toggleEditMode()" id="editModeBtn">🔓 開啟新增/刪除與匯入匯出模式</button>
+</div>
+
+<!-- 📥 匯入與匯出專區 (放大文字框寬高) -->
+<div class="card editable-panel" id="syncPanel" style="background: #f0fff4; border: 1px solid #c6f6d5;">
+    <h2 style="color: #22543d; border-bottom-color: #9ae6b4;">📥 匯入與匯出設定文字</h2>
+    <div style="font-size: 12px; color: #2f855a; margin-bottom: 8px;">
+        你可以點擊「匯出目前設定」將現有清單轉成文字備份，或將文字貼上後點擊「執行文字匯入」更新雲端：
+    </div>
+    <textarea id="importTextInput" placeholder="[裝置]&#10;C3, Realme&#10;&#10;[IOS]&#10;寶, 睡&#10;&#10;[R少]&#10;31:0"></textarea>
+    <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+        <button class="secondary" onclick="exportToText()">📤 匯出目前設定為文字</button>
+        <button class="success" onclick="importFromText()">⚡ 執行文字匯入</button>
+    </div>
 </div>
 
 <!-- 裝置管理 -->
@@ -148,23 +157,10 @@
         gameRef.on('value', (snapshot) => {
             cloudData = snapshot.val();
             
-            // 如果雲端完全沒有資料，寫入預設結構
             if (!cloudData) {
-                cloudData = {
-                    devices: ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'],
-                    groups: {
-                        'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
-                        'R中': ['8', '34', '9', '36', '14', '10', '12'],
-                        'R多': ['1', '11', '13', '16', '17', '32'],
-                        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
-                    },
-                    coins: {}
-                };
-                gameRef.set(cloudData);
-                return;
+                cloudData = { devices: [], groups: { 'R少': [], 'R中': [], 'R多': [], 'IOS': [] }, coins: {} };
             }
 
-            // 確保基本欄位存在，避免 undefined 報錯
             if (!cloudData.devices) cloudData.devices = [];
             if (!cloudData.groups) cloudData.groups = {};
             if (!cloudData.coins) cloudData.coins = {};
@@ -177,22 +173,110 @@
         gameRef.set(cloudData);
     }
 
+    function exportToText() {
+        if (!cloudData) return;
+        let textLines = [];
+
+        textLines.push('[裝置]');
+        textLines.push((cloudData.devices || []).join(', '));
+        textLines.push('');
+
+        textLines.push('[IOS]');
+        let iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
+        textLines.push(iosList.join(', '));
+        textLines.push('');
+
+        ['R少', 'R中', 'R多'].forEach(gName => {
+            textLines.push(`[${gName}]`);
+            let members = (cloudData.groups && cloudData.groups[gName]) ? cloudData.groups[gName] : [];
+            let formattedMembers = members.map(acc => {
+                let coin = (cloudData.coins && cloudData.coins[acc] !== undefined) ? cloudData.coins[acc] : 0;
+                return `${acc}:${coin}`;
+            });
+            textLines.push(formattedMembers.join(', '));
+            textLines.push('');
+        });
+
+        document.getElementById('importTextInput').value = textLines.join('\n').trim();
+        alert('📤 已成功將目前設定匯出至上方文字框！');
+    }
+
+    function importFromText() {
+        const text = document.getElementById('importTextInput').value.trim();
+        if (!text) {
+            alert('請先貼上要匯入的文字！');
+            return;
+        }
+
+        if (!confirm('確定要執行匯入嗎？這將會更新並覆蓋目前的裝置與群組清單。')) return;
+
+        let newDevices = [];
+        let newGroups = { 'R少': [], 'R中': [], 'R多': [], 'IOS': [] };
+        let newCoins = cloudData.coins || {};
+
+        let currentSection = '';
+        const lines = text.split('\n');
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+
+            if (line.startsWith('[') && line.endsWith(']')) {
+                currentSection = line.substring(1, line.length - 1).trim();
+                return;
+            }
+
+            let items = line.split(/[,，]/).map(i => i.trim()).filter(i => i !== '');
+
+            if (currentSection === '裝置') {
+                newDevices.push(...items);
+            } else if (currentSection === 'IOS') {
+                if (!newGroups['IOS']) newGroups['IOS'] = [];
+                newGroups['IOS'].push(...items);
+            } else if (['R少', 'R中', 'R多'].includes(currentSection)) {
+                if (!newGroups[currentSection]) newGroups[currentSection] = [];
+                items.forEach(item => {
+                    let parts = item.split(':');
+                    let accName = parts[0].trim();
+                    if (accName) {
+                        newGroups[currentSection].push(accName);
+                        if (parts.length > 1) {
+                            let coinVal = Number(parts[1].trim());
+                            if (!isNaN(coinVal)) newCoins[accName] = coinVal;
+                        }
+                    }
+                });
+            }
+        });
+
+        cloudData.devices = newDevices;
+        cloudData.groups = newGroups;
+        cloudData.coins = newCoins;
+
+        saveToCloud();
+        alert('🎉 成功匯入並更新雲端資料！');
+        document.getElementById('importTextInput').value = '';
+    }
+
     function toggleEditMode() {
         showEditMode = !showEditMode;
         const btn = document.getElementById('editModeBtn');
+        const syncPanel = document.getElementById('syncPanel');
         const devicePanel = document.getElementById('deviceInputPanel');
         const iosPanel = document.getElementById('iosInputPanel');
         const addPanel = document.getElementById('addAccountPanel');
         
         if (showEditMode) {
-            btn.innerText = '🔒 關閉新增/刪除模式';
+            btn.innerText = '🔒 關閉編輯與匯入匯出模式';
             btn.style.background = '#e53e3e';
+            syncPanel.style.display = 'block';
             devicePanel.style.display = 'flex';
             iosPanel.style.display = 'flex';
             addPanel.style.display = 'block';
         } else {
-            btn.innerText = '🔓 開啟新增/刪除模式';
+            btn.innerText = '🔓 開啟新增/刪除與匯入匯出模式';
             btn.style.background = '#718096';
+            syncPanel.style.display = 'none';
             devicePanel.style.display = 'none';
             iosPanel.style.display = 'none';
             addPanel.style.display = 'none';
@@ -203,12 +287,11 @@
     function renderAdminUI() {
         if (!cloudData) return;
 
-        // 1. 渲染裝置清單
         const devArea = document.getElementById('deviceListArea');
         devArea.innerHTML = '';
         const devices = cloudData.devices || [];
         if (devices.length === 0) {
-            devArea.innerHTML = '<span style="color:#a0aec0; font-size:12px;">目前沒有裝置</span>';
+            devArea.innerHTML = '<span style="color:#a0aec0; font-size:12px;">目前沒有裝置，請開啟編輯模式以文字匯入或新增</span>';
         } else {
             devices.forEach((dev, idx) => {
                 const badge = document.createElement('div');
@@ -219,7 +302,6 @@
             });
         }
 
-        // 2. 渲染 IOS 帳號
         const iosArea = document.getElementById('iosListArea');
         iosArea.innerHTML = '';
         const iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
@@ -235,19 +317,16 @@
             });
         }
 
-        // 3. 收集 R 幣帳號資料
         let allAccounts = [];
         ['R少', 'R中', 'R多'].forEach(gName => {
             if (cloudData.groups && cloudData.groups[gName]) {
                 cloudData.groups[gName].forEach(acc => {
-                    // 如果雲端沒有記錄該帳號金幣，預設顯示空白或 0 (若希望預設空白可改為 `""`)
                     let coin = (cloudData.coins && cloudData.coins[acc] !== undefined) ? cloudData.coins[acc] : '';
                     allAccounts.push({ name: acc, group: gName, coin: coin });
                 });
             }
         });
 
-        // 排序邏輯
         if (currentSortField) {
             allAccounts.sort((a, b) => {
                 let valA = a[currentSortField];
@@ -269,7 +348,6 @@
             });
         }
 
-        // 4. 渲染 R 幣帳號表格
         const coinArea = document.getElementById('coinTableArea');
         let html = `<table><thead><tr>
             <th onclick="sortTable('group')">群組 ↕</th>
