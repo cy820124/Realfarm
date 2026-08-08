@@ -16,7 +16,7 @@
             margin: 0;
             padding: 20px;
             color: #333;
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
         }
         h1 { text-align: center; color: #2c3e50; font-size: 20px; }
@@ -27,13 +27,34 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             margin-bottom: 15px;
         }
-        h2 { font-size: 15px; color: #4a5568; margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; }
+        h2 { font-size: 15px; color: #4a5568; margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
         .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
-        input, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e0; }
+        input, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e0; box-sizing: border-box; }
         input { flex: 1; }
         button { background: #3182ce; color: white; border: none; cursor: pointer; font-weight: bold; }
         button.danger { background: #e53e3e; }
-        .item-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        button.secondary { background: #718096; font-size: 12px; padding: 4px 8px; }
+        
+        .editable-panel {
+            display: none; 
+        }
+        .add-account-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            display: none;
+        }
+        .add-account-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+
+        .item-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .badge {
             background: #edf2f7;
             padding: 6px 10px;
@@ -44,11 +65,14 @@
             gap: 6px;
             border: 1px solid #cbd5e0;
         }
-        .badge span { cursor: pointer; color: #a0aec0; font-weight: bold; }
-        .badge span:hover { color: #e53e3e; }
+        .badge span { cursor: pointer; color: #e53e3e; font-weight: bold; margin-left: 2px; }
+        
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
         th, td { border: 1px solid #e2e8f0; padding: 6px; text-align: center; }
-        th { background: #f7fafc; }
+        th { background: #f7fafc; cursor: pointer; user-select: none; }
+        th:hover { background: #edf2f7; }
+        .coin-input { width: 70px; text-align: center; padding: 4px; border: 1px solid transparent; background: transparent; font-size: 13px; font-weight: bold; }
+        .coin-input:focus { border-color: #3182ce; background: #fff; outline: none; border-radius: 4px; }
         .back-link { display: block; text-align: center; margin-bottom: 15px; color: #3182ce; text-decoration: none; font-weight: bold; }
     </style>
 </head>
@@ -57,39 +81,47 @@
 <a href="index.html" class="back-link">⬅️ 返回遊戲主畫面</a>
 <h1>⚙️ 後台管理中心</h1>
 
+<div style="text-align: right; margin-bottom: 15px;">
+    <button class="secondary" onclick="toggleEditMode()" id="editModeBtn" style="padding: 6px 14px; font-size: 13px;">🔓 開啟新增/刪除模式</button>
+</div>
+
 <!-- 裝置管理 -->
 <div class="card">
     <h2>📱 裝置清單管理</h2>
-    <div class="input-group">
+    <div class="input-group editable-panel" id="deviceInputPanel">
         <input type="text" id="newDeviceInput" placeholder="輸入新裝置名稱 (例: Pro)">
         <button onclick="addDevice()">新增裝置</button>
     </div>
-    <div class="item-list" id="deviceListArea"></div>
+    <div class="item-list" id="deviceListArea">載入中...</div>
 </div>
 
 <!-- IOS 獨立群組管理 -->
 <div class="card">
     <h2>🍏 IOS 帳號管理 (手動清單)</h2>
-    <div class="input-group">
+    <div class="input-group editable-panel" id="iosInputPanel">
         <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
         <button onclick="addIosAccount()">新增IOS帳號</button>
     </div>
-    <div class="item-list" id="iosListArea"></div>
+    <div class="item-list" id="iosListArea">載入中...</div>
 </div>
 
 <!-- R 幣帳號金幣與自動分類管理 -->
 <div class="card">
-    <h2>🪙 R幣帳號金幣維護 (自動分配 R少 / R中 / R多)</h2>
-    <div class="input-group">
-        <input type="text" id="accNameInput" placeholder="帳號代號 (例: 31)">
-        <input type="number" id="accCoinInput" placeholder="目前金幣數量" style="max-width: 120px;">
-        <button onclick="saveOrUpdateAccountCoin()">更新/新增</button>
+    <h2>🪙 R幣帳號金幣維護與分組</h2>
+
+    <div class="add-account-panel" id="addAccountPanel">
+        <div class="add-account-title">✨ 新增新帳號</div>
+        <div class="input-group" style="margin-bottom: 0;">
+            <input type="text" id="newAccNameInput" placeholder="帳號代號 (例: 38)">
+            <input type="number" id="newAccCoinInput" placeholder="初始金幣" style="max-width: 120px;">
+            <button onclick="addNewAccount()">確認新增</button>
+        </div>
     </div>
-    <div style="font-size: 12px; color: #718096; margin-bottom: 8px;">
-        💡 規則：金幣 &lt; 200 ➔ <b>R少</b> | 金幣 &lt; 300 ➔ <b>R中</b> | 其餘 ➔ <b>R多</b><br>
-        *(跨群組會自動移至新群組尾端，同群組內原有順序保持不變)*
+
+    <div style="font-size: 12px; color: #718096; margin-bottom: 8px; margin-top: 5px;">
+        💡 <b>直接在表格裡修改金幣</b>：同區內改金幣順序不動，跨群組才會移至新群組尾端。點擊表頭可切換排序！
     </div>
-    <div id="coinTableArea"></div>
+    <div id="coinTableArea">載入中...</div>
 </div>
 
 <script>
@@ -108,12 +140,16 @@
     const gameRef = db.ref("game_tracker_v5");
 
     let cloudData = null;
+    let showEditMode = false; 
+    let currentSortField = 'name';  
+    let sortAscending = true;     
 
     document.addEventListener('DOMContentLoaded', () => {
         gameRef.on('value', (snapshot) => {
             cloudData = snapshot.val();
+            
+            // 如果雲端完全沒有資料，寫入預設結構
             if (!cloudData) {
-                // 初始化預設結構
                 cloudData = {
                     devices: ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'],
                     groups: {
@@ -122,11 +158,17 @@
                         'R多': ['1', '11', '13', '16', '17', '32'],
                         'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
                     },
-                    coins: {} // 記錄每個帳號金幣
+                    coins: {}
                 };
                 gameRef.set(cloudData);
+                return;
             }
+
+            // 確保基本欄位存在，避免 undefined 報錯
+            if (!cloudData.devices) cloudData.devices = [];
+            if (!cloudData.groups) cloudData.groups = {};
             if (!cloudData.coins) cloudData.coins = {};
+
             renderAdminUI();
         });
     });
@@ -135,49 +177,203 @@
         gameRef.set(cloudData);
     }
 
+    function toggleEditMode() {
+        showEditMode = !showEditMode;
+        const btn = document.getElementById('editModeBtn');
+        const devicePanel = document.getElementById('deviceInputPanel');
+        const iosPanel = document.getElementById('iosInputPanel');
+        const addPanel = document.getElementById('addAccountPanel');
+        
+        if (showEditMode) {
+            btn.innerText = '🔒 關閉新增/刪除模式';
+            btn.style.background = '#e53e3e';
+            devicePanel.style.display = 'flex';
+            iosPanel.style.display = 'flex';
+            addPanel.style.display = 'block';
+        } else {
+            btn.innerText = '🔓 開啟新增/刪除模式';
+            btn.style.background = '#718096';
+            devicePanel.style.display = 'none';
+            iosPanel.style.display = 'none';
+            addPanel.style.display = 'none';
+        }
+        renderAdminUI();
+    }
+
     function renderAdminUI() {
+        if (!cloudData) return;
+
         // 1. 渲染裝置清單
         const devArea = document.getElementById('deviceListArea');
         devArea.innerHTML = '';
-        (cloudData.devices || []).forEach((dev, idx) => {
-            const badge = document.createElement('div');
-            badge.className = 'badge';
-            badge.innerHTML = `${dev} <span onclick="removeDevice(${idx})">&times;</span>`;
-            devArea.appendChild(badge);
-        });
+        const devices = cloudData.devices || [];
+        if (devices.length === 0) {
+            devArea.innerHTML = '<span style="color:#a0aec0; font-size:12px;">目前沒有裝置</span>';
+        } else {
+            devices.forEach((dev, idx) => {
+                const badge = document.createElement('div');
+                badge.className = 'badge';
+                let deleteBtnHtml = showEditMode ? ` <span onclick="removeDevice(${idx})">&times;</span>` : '';
+                badge.innerHTML = `${dev}${deleteBtnHtml}`;
+                devArea.appendChild(badge);
+            });
+        }
 
         // 2. 渲染 IOS 帳號
         const iosArea = document.getElementById('iosListArea');
         iosArea.innerHTML = '';
-        const iosList = cloudData.groups['IOS'] || [];
-        iosList.forEach((acc, idx) => {
-            const badge = document.createElement('div');
-            badge.className = 'badge';
-            badge.innerHTML = `${acc} <span onclick="removeIos(${idx})">&times;</span>`;
-            iosArea.appendChild(badge);
+        const iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
+        if (iosList.length === 0) {
+            iosArea.innerHTML = '<span style="color:#a0aec0; font-size:12px;">目前沒有 IOS 帳號</span>';
+        } else {
+            iosList.forEach((acc, idx) => {
+                const badge = document.createElement('div');
+                badge.className = 'badge';
+                let deleteBtnHtml = showEditMode ? ` <span onclick="removeIos(${idx})">&times;</span>` : '';
+                badge.innerHTML = `${acc}${deleteBtnHtml}`;
+                iosArea.appendChild(badge);
+            });
+        }
+
+        // 3. 收集 R 幣帳號資料
+        let allAccounts = [];
+        ['R少', 'R中', 'R多'].forEach(gName => {
+            if (cloudData.groups && cloudData.groups[gName]) {
+                cloudData.groups[gName].forEach(acc => {
+                    // 如果雲端沒有記錄該帳號金幣，預設顯示空白或 0 (若希望預設空白可改為 `""`)
+                    let coin = (cloudData.coins && cloudData.coins[acc] !== undefined) ? cloudData.coins[acc] : '';
+                    allAccounts.push({ name: acc, group: gName, coin: coin });
+                });
+            }
         });
 
-        // 3. 渲染 R 幣帳號與金幣表
-        const coinArea = document.getElementById('coinTableArea');
-        let html = `<table><thead><tr><th>群組</th><th>帳號</th><th>目前金幣</th><th>操作</th></tr></thead><tbody>`;
-        
-        ['R少', 'R中', 'R多'].forEach(gName => {
-            const list = cloudData.groups[gName] || [];
-            list.forEach(acc => {
-                const coin = cloudData.coins[acc] !== undefined ? cloudData.coins[acc] : '';
-                html += `<tr>
-                    <td><b>${gName}</b></td>
-                    <td>${acc}</td>
-                    <td>${coin}</td>
-                    <td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeR միAcc('${acc}')">刪除</button></td>
-                </tr>`;
+        // 排序邏輯
+        if (currentSortField) {
+            allAccounts.sort((a, b) => {
+                let valA = a[currentSortField];
+                let valB = b[currentSortField];
+
+                if (currentSortField === 'name') {
+                    let numA = Number(valA);
+                    let numB = Number(valB);
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        return sortAscending ? numA - numB : numB - numA;
+                    }
+                }
+
+                if (typeof valA === 'string') {
+                    return sortAscending ? valA.localeCompare(valB, 'zh-Hant') : valB.localeCompare(valA, 'zh-Hant');
+                } else {
+                    return sortAscending ? valA - valB : valB - valA;
+                }
             });
-        });
+        }
+
+        // 4. 渲染 R 幣帳號表格
+        const coinArea = document.getElementById('coinTableArea');
+        let html = `<table><thead><tr>
+            <th onclick="sortTable('group')">群組 ↕</th>
+            <th onclick="sortTable('name')">帳號 ↕</th>
+            <th onclick="sortTable('coin')">目前金幣 (點擊可直接改) ↕</th>`;
+        
+        if (showEditMode) html += `<th>操作</th>`;
+        html += `</tr></thead><tbody>`;
+
+        if (allAccounts.length === 0) {
+            html += `<tr><td colspan="${showEditMode ? 4 : 3}" style="color:#a0aec0; padding:15px;">目前沒有 R 幣帳號</td></tr>`;
+        } else {
+            allAccounts.forEach(item => {
+                html += `<tr>
+                    <td><span style="background:#edf2f7; padding:2px 6px; border-radius:4px; font-size:11px;">${item.group}</span></td>
+                    <td><b>${item.name}</b></td>
+                    <td><input type="number" class="coin-input" value="${item.coin}" placeholder="-" onchange="updateCoinDirectly('${item.name}', this.value)"></td>`;
+                
+                if (showEditMode) {
+                    html += `<td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeRspAcc('${item.name}')">刪除</button></td>`;
+                }
+                html += `</tr>`;
+            });
+        }
         html += `</tbody></table>`;
         coinArea.innerHTML = html;
     }
 
-    // 裝置操作
+    function sortTable(field) {
+        if (currentSortField === field) {
+            sortAscending = !sortAscending;
+        } else {
+            currentSortField = field;
+            sortAscending = true;
+        }
+        renderAdminUI();
+    }
+
+    function updateCoinDirectly(accName, coinVal) {
+        if (coinVal === '') return;
+        const coin = Number(coinVal);
+
+        let targetGroup = 'R少';
+        if (coin < 200) targetGroup = 'R少';
+        else if (coin < 300) targetGroup = 'R中';
+        else targetGroup = 'R多';
+
+        let oldGroup = null;
+        ['R少', 'R中', 'R多'].forEach(g => {
+            if (cloudData.groups[g] && cloudData.groups[g].includes(accName)) {
+                oldGroup = g;
+            }
+        });
+
+        if (oldGroup !== targetGroup) {
+            if (oldGroup) {
+                const idx = cloudData.groups[oldGroup].indexOf(accName);
+                if (idx > -1) cloudData.groups[oldGroup].splice(idx, 1);
+            }
+            if (!cloudData.groups[targetGroup]) cloudData.groups[targetGroup] = [];
+            cloudData.groups[targetGroup].push(accName);
+        }
+
+        if (!cloudData.coins) cloudData.coins = {};
+        cloudData.coins[accName] = coin;
+
+        saveToCloud();
+    }
+
+    function addNewAccount() {
+        const acc = document.getElementById('newAccNameInput').value.trim();
+        const coinVal = document.getElementById('newAccCoinInput').value.trim();
+        if (!acc) {
+            alert('請輸入帳號代號！');
+            return;
+        }
+        const coin = coinVal !== '' ? Number(coinVal) : 0;
+
+        let targetGroup = 'R少';
+        if (coin < 200) targetGroup = 'R少';
+        else if (coin < 300) targetGroup = 'R中';
+        else targetGroup = 'R多';
+
+        let exists = false;
+        ['R少', 'R中', 'R多'].forEach(g => {
+            if (cloudData.groups[g] && cloudData.groups[g].includes(acc)) exists = true;
+        });
+
+        if (exists) {
+            alert(`帳號【${acc}】已經存在囉！`);
+            return;
+        }
+
+        if (!cloudData.groups[targetGroup]) cloudData.groups[targetGroup] = [];
+        cloudData.groups[targetGroup].push(acc);
+
+        if (!cloudData.coins) cloudData.coins = {};
+        cloudData.coins[acc] = coin;
+
+        document.getElementById('newAccNameInput').value = '';
+        document.getElementById('newAccCoinInput').value = '';
+        saveToCloud();
+    }
+
     function addDevice() {
         const val = document.getElementById('newDeviceInput').value.trim();
         if (!val) return;
@@ -191,7 +387,6 @@
         saveToCloud();
     }
 
-    // IOS 操作
     function addIosAccount() {
         const val = document.getElementById('newIosInput').value.trim();
         if (!val) return;
@@ -205,57 +400,7 @@
         saveToCloud();
     }
 
-    // R幣帳號金幣與智能歸類核心邏輯
-    function saveOrUpdateAccountCoin() {
-        const acc = document.getElementById('accNameInput').value.trim();
-        const coinVal = document.getElementById('accCoinInput').value.trim();
-        if (!acc || coinVal === '') {
-            alert('請完整輸入帳號與金幣數量！');
-            return;
-        }
-        const coin = Number(coinVal);
-
-        // 依金幣自動決定目標群組
-        let targetGroup = 'R少';
-        if (coin < 200) targetGroup = 'R少';
-        else if (coin < 300) targetGroup = 'R中';
-        else targetGroup = 'R多';
-
-        // 檢查該帳號本來在哪個群組
-        let currentGroup = null;
-        ['R少', 'R中', 'R多'].forEach(g => {
-            if (!cloudData.groups[g]) cloudData.groups[g] = [];
-            const idx = cloudData.groups[g].indexOf(acc);
-            if (idx > -1) {
-                currentGroup = g;
-                // 如果還在同群組，先把它從原本位置抽出來檢查
-                cloudData.groups[g].splice(idx, 1);
-            }
-        });
-
-        // 確保目標群組存在
-        if (!cloudData.groups[targetGroup]) cloudData.groups[targetGroup] = [];
-
-        if (currentGroup === targetGroup) {
-            // 情況 A：仍在同一個群組內 ➔ 保持原本的相對順序不動，我們把它放回原位（或如果原本找不到就推到尾端）
-            // 簡單起見，同區內金幣變動不改變現有陣列順序，若新帳號則推尾端
-            cloudData.groups[targetGroup].push(acc);
-        } else {
-            // 情況 B：跨區跳槽 ➔ 加到新群組的最後面！不影響其他人的順序
-            cloudData.groups[targetGroup].push(acc);
-        }
-
-        // 記錄金幣
-        if (!cloudData.coins) cloudData.coins = {};
-        cloudData.coins[acc] = coin;
-
-        document.getElementById('accNameInput').value = '';
-        document.getElementById('accCoinInput').value = '';
-        saveToCloud();
-        alert(`帳號【${acc}】已更新金幣 ${coin}，並自動歸類至【${targetGroup}】群組！`);
-    }
-
-    function removeR միAcc(acc) {
+    function removeRspAcc(acc) {
         if (!confirm(`確定要刪除帳號 ${acc} 嗎？`)) return;
         ['R少', 'R中', 'R多'].forEach(g => {
             if (cloudData.groups[g]) {
