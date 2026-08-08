@@ -43,22 +43,14 @@
             margin-bottom: 8px;
         }
 
-        .stats-bar {
-            background: #edf2f7;
-            border: 1px solid #cbd5e0;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            font-size: 13px;
+        .admin-link {
+            display: block;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #3182ce;
+            text-decoration: none;
             font-weight: bold;
-        }
-
-        .stats-item span {
-            color: #2b6cb0;
-            font-size: 15px;
+            font-size: 13px;
         }
 
         .hint-bar {
@@ -233,7 +225,6 @@
             touch-action: manipulation;
         }
 
-        /* 💡 已經分配到今日任務的角色按鈕樣式 (灰階、半透明、提示已指派) */
         .queue-btn.assigned {
             background: #e2e8f0;
             color: #a0aec0;
@@ -345,12 +336,8 @@
 </head>
 <body>
 
+<a href="admin.html" class="admin-link">⚙️ 前往後台管理中心</a>
 <h1>🎮 Realfarm R幣任務紀錄</h1>
-
-<div class="stats-bar">
-    <div class="stats-item">今日任務完成度：<span id="completionRate">0% (0/0)</span></div>
-    <div class="stats-item">昨日任務完成度：<span id="yesterdayCompletionRate">0% (0/0)</span></div>
-</div>
 
 <div class="hint-bar">
     <span id="hintBarText">👉 點擊：完成打勾 | 長按：標記進行中(一半) | ✖：移除</span>
@@ -365,8 +352,8 @@
 <!-- 📌 今日未完成總覽區 -->
 <div class="pending-overview-container">
     <div class="pending-overview-title">
-        <span>🔥 今日未完成 / 進行中總覽 (點擊可直接打勾)</span>
-        <span id="pendingCount" style="font-size: 12px; background: #fbd38d; color: #744210; padding: 2px 6px; border-radius: 4px;">0 項未完成</span>
+        <span id="overviewTitleText">🔥 8/8 未完成總覽 (點擊可打勾)</span>
+        <span id="completionRateTag" style="font-size: 12px; background: #c6f6d5; color: #22543d; padding: 2px 6px; border-radius: 4px; font-weight: bold;">0% (0/0)</span>
     </div>
     <div class="pending-box" id="pendingOverviewBox">
         <span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務，太棒了！</span>
@@ -389,7 +376,7 @@
         <thead>
             <tr>
                 <th class="col-device">裝置</th>
-                <th class="col-today">今日任務 (可編輯)</th>
+                <th class="col-today" id="todayHeaderTitle">今日任務 (可編輯)</th>
                 <th class="col-history history-col">昨日任務</th>
             </tr>
         </thead>
@@ -416,12 +403,13 @@
     
     let todayInitialGroups = null;
     let accountGroups = null; 
+    let devices = [];
     let activeZone = null;
     let sortableInstances = [];
     let isRemoteUpdating = false;
+    let activeDateStr = ''; 
 
     document.addEventListener('DOMContentLoaded', () => {
-        initTable();
         listenToFirebase();
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.multiselect-dropdown')) {
@@ -440,17 +428,34 @@
             const data = snapshot.val();
             isRemoteUpdating = true;
 
-            if (!data || !data.groups) {
+            const DEFAULT_GROUPS = {
+                'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
+                'R中': ['8', '34', '9', '36', '14', '10', '12'],
+                'R多': ['1', '11', '13', '16', '17', '32'],        
+                'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
+            };
+            const DEFAULT_DEVICES = ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'];
+
+            const todayFormatted = getFormattedDate(new Date());
+
+            if (!data) {
                 accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
                 todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+                devices = DEFAULT_DEVICES;
+                activeDateStr = todayFormatted;
                 saveDataToCloud();
             } else {
-                accountGroups = data.groups;
+                accountGroups = data.groups || DEFAULT_GROUPS;
                 todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+                devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES; // 💡 確保正確抓取後台的最新裝置清單
+                activeDateStr = data.activeDate || todayFormatted;
             }
 
+            initTable(); // 💡 每次雲端資料一變動，表格會自動用最新的 devices 重新生成
             renderDropdownMenu();
             renderQueuesBySelection();
+            updateDateLabels(); 
+            
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
             
             if (data && data.today) {
@@ -467,17 +472,30 @@
             }
             updateStats();
             updatePendingOverview();
-            updateQueueAssignedStatus(); // 🔄 更新上方佇列按鈕的指派狀態顏色
+            updateQueueAssignedStatus();
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
     }
 
+    function getFormattedDate(dateObj) {
+        const m = dateObj.getMonth() + 1;
+        const d = dateObj.getDate();
+        return `${m}/${d}`;
+    }
+
+    function updateDateLabels() {
+        document.getElementById('todayHeaderTitle').innerText = `今日任務 (${activeDateStr}) (可編輯)`;
+        document.getElementById('overviewTitleText').innerText = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
+    }
+
     function saveDataToCloud() {
         if (isRemoteUpdating) return;
         const data = {
+            devices: devices,
             groups: accountGroups,
-            initialGroups: todayInitialGroups || DEFAULT_GROUPS,
+            initialGroups: todayInitialGroups || {},
+            activeDate: activeDateStr,
             today: {},
             yesterday: {}
         };
@@ -507,7 +525,7 @@
             });
             if (chips.length > 0) data.yesterday[key] = chips;
         });
-        gameRef.set(data);
+        gameRef.update(data);
     }
 
     function toggleDropdownMenu() { document.getElementById('dropdownMenu').classList.toggle('show'); }
@@ -592,7 +610,6 @@
         updateQueueAssignedStatus();
     }
 
-    // 💡 檢查並更新上方佇列按鈕的背景顏色（已指派的變灰）
     function updateQueueAssignedStatus() {
         const assignedNames = new Set();
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
@@ -773,7 +790,6 @@
 
     function updatePendingOverview() {
         const box = document.getElementById('pendingOverviewBox');
-        const countTag = document.getElementById('pendingCount');
         box.innerHTML = '';
 
         let pendingChips = [];
@@ -789,8 +805,6 @@
                 });
             }
         });
-
-        countTag.innerText = `${pendingChips.length} 項未完成`;
 
         if (pendingChips.length === 0) {
             box.innerHTML = '<span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務，太棒了！</span>';
@@ -822,18 +836,17 @@
     }
 
     function updateStats() {
-        const calcRate = (selector) => {
-            const total = document.querySelectorAll(selector).length;
-            const comp = document.querySelectorAll(`${selector}.completed`).length;
-            const percent = total > 0 ? Math.round((comp / total) * 100) : 0;
-            return `${percent}% (${comp}/${total})`;
-        };
-        document.getElementById('completionRate').innerText = calcRate('.today-zone .quest-chip');
-        document.getElementById('yesterdayCompletionRate').innerText = calcRate('.yest-zone .quest-chip');
+        const total = document.querySelectorAll('.today-zone .quest-chip').length;
+        const comp = document.querySelectorAll('.today-zone .quest-chip.completed').length;
+        const percent = total > 0 ? Math.round((comp / total) * 100) : 0;
+        
+        const rateTag = document.getElementById('completionRateTag');
+        rateTag.innerText = `${percent}% (${comp}/${total})`;
     }
 
     function shiftToNextDay() {
-        if (confirm('確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天嗎？')) {
+        const nextDayStr = getFormattedDate(new Date());
+        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？`)) {
             devices.forEach(device => {
                 const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
@@ -844,11 +857,13 @@
                 todayZone.innerHTML = '';
             });
             todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
+            activeDateStr = nextDayStr; 
             saveDataToCloud();
+            updateDateLabels();
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
-            alert('已成功移交至新的一天，並已保留目前的佇列順序！');
+            alert(`已成功移交至新的一天（${activeDateStr}），並已保留目前的佇列順序！`);
         }
     }
 
@@ -858,8 +873,6 @@
             
             if (todayInitialGroups) {
                 accountGroups = JSON.parse(JSON.stringify(todayInitialGroups));
-            } else {
-                accountGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
             }
 
             renderDropdownMenu();
@@ -871,20 +884,6 @@
             alert('已成功重置今日資料，並恢復佇列順序！');
         }
     }
-
-    // ==========================================
-    // 💡 【設定區】最底部，隨時可依你想要的順序調整
-    // ==========================================
-
-    const DEFAULT_GROUPS = {
-        'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
-        'R中': ['8', '34', '9', '36', '14', '10', '12'],
-        'R多': ['1', '11', '13', '16', '17', '32'],        
-        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
-    };
-
-    const devices = ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'];
-
 </script>
 
 </body>
