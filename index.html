@@ -969,14 +969,15 @@
     }
 
     function updateQueueAssignedStatus() {
-        const assignedNames = new Set();
+        const assignedMap = new Map();
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
-            assignedNames.add(chip.dataset.name);
+            assignedMap.set(chip.dataset.name, chip.dataset.group);
         });
 
         document.querySelectorAll('.queue-btn').forEach(btn => {
             const accName = btn.dataset.name;
-            if (assignedNames.has(accName)) {
+            const accGroup = btn.dataset.group;
+            if (assignedMap.has(accName) && assignedMap.get(accName) === accGroup) {
                 btn.classList.add('assigned');
             } else {
                 btn.classList.remove('assigned');
@@ -1159,14 +1160,13 @@
         });
 
         const titleText = document.getElementById('overviewTitleText');
-        titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`
+        titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
 
         if (pendingChips.length === 0) {
             box.innerHTML = ''; 
             return;
         }
 
-        pendingChips.items.forEach(item => {}); // safe guard
         pendingChips.forEach(item => {
             const chip = document.createElement('div');
             chip.dataset.name = item.name;
@@ -1174,7 +1174,7 @@
             chip.dataset.status = item.status;
             chip.dataset.device = item.device;
 
-            updateChipAppearance(chip, item.status, item.name, item.index ? false : false, true, item.group);
+            updateChipAppearance(chip, item.status, item.name, false, true, item.group);
             setupChipInteractions(chip, item.name, item.group, true);
             box.appendChild(chip);
         });
@@ -1219,7 +1219,7 @@
             devices.forEach(device => {
                 const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-                yestZone.innerHTML = `.`; yestZone.innerHTML = '';
+                yestZone.innerHTML = '';
                 todayZone.querySelectorAll('.quest-chip').forEach(chip => {
                     addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true);
                 });
