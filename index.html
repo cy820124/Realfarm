@@ -43,15 +43,31 @@
             margin-bottom: 8px;
         }
 
-        .admin-link {
-            display: block;
-            text-align: center;
+        .top-nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
+        }
+
+        .admin-link {
             color: #3182ce;
             text-decoration: none;
             font-weight: bold;
             font-size: 13px;
         }
+
+        .btn-fish-modal-open {
+            background-color: #319795;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-fish-modal-open:hover { background-color: #2c7a7b; }
 
         .hint-bar {
             background: #2d3748;
@@ -395,11 +411,108 @@
             margin-right: 2px;
             color: inherit;
         }
+
+        /* 🎣 釣魚冷卻追蹤滿版 Modal 視窗樣式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-card {
+            background: #ffffff;
+            width: 100%;
+            height: 100%;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            background: #319795;
+            color: white;
+            padding: 14px 16px;
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-close-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 6px;
+        }
+        .modal-body {
+            padding: 12px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .fish-group-section {
+            margin-bottom: 12px;
+        }
+        .fish-group-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #2c5282;
+            margin-bottom: 6px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 3px;
+        }
+        .fish-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+            gap: 5px;
+        }
+        .fish-btn {
+            padding: 6px 2px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            background: #edf2f7;
+            color: #2d3748;
+            border: 1px solid #cbd5e0;
+            cursor: pointer;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.1;
+            min-height: 38px;
+        }
+        .fish-btn:hover { background: #e2e8f0; }
+        .fish-btn.cooldown {
+            background: #e2e8f0;
+            color: #a0aec0;
+            border-color: #cbd5e0;
+            opacity: 0.8;
+        }
+        .fish-btn .cd-text {
+            font-size: 10px;
+            color: #e53e3e;
+            margin-top: 1px;
+        }
     </style>
 </head>
 <body>
 
-<a href="admin.html" class="admin-link">⚙️ 前往後台管理中心</a>
+<div class="top-nav-bar">
+    <a href="admin.html" class="admin-link">⚙️ 前往後台管理中心</a>
+    <button class="btn-fish-modal-open" onclick="openFishModal()">🎣 釣魚冷卻追蹤</button>
+</div>
+
 <h1>🎮 Realfarm R幣任務紀錄</h1>
 
 <div class="hint-bar">
@@ -407,7 +520,7 @@
     <span class="sync-status" id="syncStatus">☁️ 雲端連線中</span>
 </div>
 
-<!-- 📺 可收合式每日廣告賺R幣區塊 -->
+<!-- 📺 可收合式廣告面版樣式 -->
 <div class="ad-collapsible-container">
     <div class="ad-header-bar" onclick="toggleAdPanel()">
         <span id="adPanelTitle">📺 今日廣告賺 R 幣記錄 (已完成: 0/0)</span>
@@ -462,6 +575,24 @@
     <button class="btn-reset-today" onclick="resetTodayData()">↺ 重設今日資料與佇列順序</button>
 </div>
 
+<!-- 🎣 釣魚冷卻追蹤滿版 Modal 視窗 -->
+<div class="modal-overlay" id="fishModalOverlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <span>🎣 釣魚冷卻追蹤</span>
+            <button class="modal-close-btn" onclick="closeFishModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">
+                💡 點擊帳號代表「剛釣完魚，進入 10 分鐘冷卻」。已冷卻完或尚未點擊的帳號會優先排在前面（R少優先），讓您輕鬆輪流切換！
+            </div>
+            <div id="fishModalContentContainer">
+                <!-- 動態生成各群組的釣魚按鈕 -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyC-5eJaWoM9yQfOtkbjEkm922KQ1Zpbs1A",
@@ -487,7 +618,11 @@
     let isRemoteUpdating = false;
     let activeDateStr = ''; 
     let adWatchedData = {}; 
-    let coinData = {}; // 記錄各帳號的 R 幣數量
+    let coinData = {}; 
+    
+    // 🎣 釣魚 CD 資料 (記錄各帳號冷卻結束的時間戳記)
+    let fishingCdData = {}; 
+    const FISHING_CD_DURATION = 10 * 60 * 1000; // 10分鐘
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -496,6 +631,14 @@
                 document.getElementById('dropdownMenu').classList.remove('show');
             }
         });
+
+        // 每分鐘自動刷新一次釣魚 Modal 的倒數顯示
+        setInterval(() => {
+            const modal = document.getElementById('fishModalOverlay');
+            if (modal.classList.contains('show')) {
+                renderFishModalContent();
+            }
+        }, 60000);
     });
 
     function getSortedGroupNames() {
@@ -525,6 +668,7 @@
                 activeDateStr = todayFormatted;
                 adWatchedData = {};
                 coinData = {};
+                fishingCdData = {};
                 saveDataToCloud();
             } else {
                 accountGroups = data.groups || DEFAULT_GROUPS;
@@ -533,6 +677,7 @@
                 activeDateStr = data.activeDate || todayFormatted;
                 adWatchedData = data.adWatched || {};
                 coinData = data.coins || {};
+                fishingCdData = data.fishingCd || {};
             }
 
             initTable();
@@ -558,6 +703,12 @@
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
+
+            // 若 Modal 正開著，同步更新
+            if (document.getElementById('fishModalOverlay').classList.contains('show')) {
+                renderFishModalContent();
+            }
+
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
@@ -583,6 +734,7 @@
             activeDate: activeDateStr,
             adWatched: adWatchedData,
             coins: coinData,
+            fishingCd: fishingCdData,
             today: {},
             yesterday: {}
         };
@@ -613,6 +765,83 @@
             if (chips.length > 0) data.yesterday[key] = chips;
         });
         gameRef.update(data);
+    }
+
+    // 🎣 釣魚 滿版 Modal 控制函數
+    function openFishModal() {
+        document.getElementById('fishModalOverlay').classList.add('show');
+        renderFishModalContent();
+    }
+
+    function closeFishModal() {
+        document.getElementById('fishModalOverlay').classList.remove('show');
+    }
+
+    function renderFishModalContent() {
+        const container = document.getElementById('fishModalContentContainer');
+        container.innerHTML = '';
+
+        if (!accountGroups) return;
+
+        let groupOrder = ['R少', 'R中', 'R多', 'IOS'];
+        let allGroups = Object.keys(accountGroups);
+        let sortedGroups = groupOrder.filter(g => allGroups.includes(g));
+        allGroups.forEach(g => { if (!sortedGroups.includes(g)) sortedGroups.push(g); });
+
+        const now = Date.now();
+
+        sortedGroups.forEach(groupName => {
+            let accounts = [...accountGroups[groupName]];
+
+            accounts.sort((a, b) => {
+                let cdA = fishingCdData[a] || 0;
+                let cdB = fishingCdData[b] || 0;
+                let isCdA = now < cdA;
+                let isCdB = now < cdB;
+
+                if (isCdA !== isCdB) {
+                    return isCdA ? 1 : -1;
+                }
+                return 0;
+            });
+
+            const section = document.createElement('div');
+            section.className = 'fish-group-section';
+
+            const title = document.createElement('div');
+            title.className = 'fish-group-title';
+            title.innerText = `📌 ${groupName}`;
+            section.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.className = 'fish-grid';
+
+            accounts.forEach(acc => {
+                const cdEnd = fishingCdData[acc] || 0;
+                const isCd = now < cdEnd;
+                let remainMin = Math.ceil((cdEnd - now) / 60000);
+
+                const btn = document.createElement('button');
+                btn.className = `fish-btn ${isCd ? 'cooldown' : ''}`;
+                
+                let htmlContent = `<span>${acc}</span>`;
+                if (isCd && remainMin > 0) {
+                    htmlContent += `<span class="cd-text">${remainMin}分</span>`;
+                }
+                btn.innerHTML = htmlContent;
+
+                btn.onclick = () => {
+                    fishingCdData[acc] = Date.now() + FISHING_CD_DURATION;
+                    saveDataToCloud();
+                    renderFishModalContent();
+                };
+
+                grid.appendChild(btn);
+            });
+
+            section.appendChild(grid);
+            container.appendChild(section);
+        });
     }
 
     function toggleAdPanel() {
@@ -985,9 +1214,8 @@
 
     function shiftToNextDay() {
         const nextDayStr = getFormattedDate(new Date());
-        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動為所有「今天有看過廣告」的帳號 R 幣數量 +1！`)) {
+        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動為所有 !今天有看過廣告」的帳號 R 幣數量 +1！`)) {
             
-            // 💡 自動幫今天有看廣告的帳號 R 幣 +1
             if (adWatchedData && coinData) {
                 Object.keys(adWatchedData).forEach(accName => {
                     if (adWatchedData[accName] === true) {
