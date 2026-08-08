@@ -76,7 +76,6 @@
             border-radius: 6px;
             font-size: 12px;
             margin-bottom: 12px;
-            text-align: center;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -88,6 +87,7 @@
             border-radius: 4px;
             background: #38a169;
             color: white;
+            white-space: nowrap;
         }
 
         .btn {
@@ -198,12 +198,20 @@
             align-items: center;
         }
 
+        /* 📌 讓選擇角色佇列區塊支援動態置頂：有勾選才 sticky，沒勾選就靜態 */
         .group-container {
             background: var(--card-bg);
             padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             margin-bottom: 12px;
+            transition: box-shadow 0.2s;
+        }
+        .group-container.has-queues {
+            position: sticky;
+            top: 6px;
+            z-index: 90;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
         .multiselect-dropdown {
@@ -517,7 +525,7 @@
 <h1>🎮 Realfarm R幣任務紀錄</h1>
 
 <div class="hint-bar">
-    <span id="hintBarText">👉 點擊：完成打勾 | 長按：標記進行中(一半) | ✖：移除</span>
+    <span>👉 點擊：完成打勾 | 長按：標記進行中(一半) | ✖：移除</span>
     <span class="sync-status" id="syncStatus">☁️ 雲端連線中</span>
 </div>
 
@@ -544,7 +552,7 @@
     </div>
 </div>
 
-<div class="group-container">
+<div class="group-container" id="groupContainer">
     <div class="multiselect-dropdown">
         <button class="dropdown-btn" onclick="toggleDropdownMenu()">
             <span id="dropdownBtnText">🔍 選擇要顯示的角色佇列...</span>
@@ -599,11 +607,10 @@
     const db = firebase.database();
     const gameRef = db.ref("game_tracker_v5");
 
-    let selectedGroupNames = new Set(['R少']);
+    let selectedGroupNames = new Set();
     let todayInitialGroups = null;
     let accountGroups = null; 
     let devices = [];
-    let activeZone = null;
     let sortableInstances = [];
     let isRemoteUpdating = false;
     let activeDateStr = ''; 
@@ -653,6 +660,7 @@
                 todayInitialGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
                 devices = DEFAULT_DEVICES;
                 activeDateStr = todayFormatted;
+                selectedGroupNames = new Set(['R少']);
                 adWatchedData = {};
                 coinData = {};
                 fishingCdData = {};
@@ -821,9 +829,10 @@
                 btn.innerHTML = htmlContent;
 
                 btn.onclick = () => {
+                    // 💡 立即在本地更新冷卻時間並重新渲染畫面，不等待雲端非同步返回，解決點擊延遲問題
                     fishingCdData[acc] = Date.now() + FISHING_CD_DURATION;
-                    saveDataToCloud();
                     renderFishModalContent();
+                    saveDataToCloud();
                 };
 
                 grid.appendChild(btn);
@@ -902,6 +911,9 @@
                 else selectedGroupNames.delete(groupName);
                 updateDropdownBtnText();
                 renderQueuesBySelection();
+                
+                // 💡 勾選或取消佇列選單時，自動收合下拉選單
+                document.getElementById('dropdownMenu').classList.remove('show');
             };
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(`${groupName} (${accountGroups[groupName].length})`));
@@ -921,6 +933,14 @@
         area.innerHTML = '';
         sortableInstances.forEach(inst => inst.destroy());
         sortableInstances = [];
+
+        const groupContainer = document.getElementById('groupContainer');
+        if (selectedGroupNames.size > 0) {
+            groupContainer.classList.add('has-queues');
+        } else {
+            groupContainer.classList.remove('has-queues');
+        }
+
         getSortedGroupNames().forEach(groupName => {
             if (!selectedGroupNames.has(groupName)) return;
             const groupWrapper = document.createElement('div');
@@ -940,10 +960,12 @@
                     btn.dataset.name = acc;
                     btn.dataset.group = groupName;
                     btn.onclick = () => {
-                        if (!activeZone) { alert('請先點擊下方表格選取【今日任務】對應裝置的格子！'); return; }
+                        const targetZone = document.querySelector('.drop-zone.today-zone.active');
+                        if (!targetZone) { alert('請先點擊下方表格選取【今日任務】對應裝置的格子！'); return; }
                         const existingDevice = checkAccountAddedToday(acc);
                         if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
-                        addChip(activeZone, acc, groupName, 'normal', false);
+                        
+                        addChip(targetZone, acc, groupName, 'normal', false);
                         saveDataToCloud();
                         updateStats();
                         updatePendingOverview();
@@ -1035,10 +1057,8 @@
     }
 
     function selectZone(zone) {
-        if (activeZone) activeZone.classList.remove('active');
-        activeZone = zone;
-        activeZone.classList.add('active');
-        document.getElementById('hintBarText').innerText = `選取中裝置：${zone.dataset.device} (今日) ➔ 請點擊上方角色按鈕派單`;
+        document.querySelectorAll('.drop-zone.today-zone').forEach(z => z.classList.remove('active'));
+        zone.classList.add('active');
     }
 
     function addChip(zone, accName, groupName, status = 'normal', isHistory = false) {
@@ -1064,7 +1084,9 @@
             isLongPress = false;
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                toggleChipStatus(chip, accName, groupName, 'in-progress');
+                let currentStatus = chip.dataset.status;
+                let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
+                toggleChipStatus(chip, accName, groupName, newStatus);
             }, 600);
         });
 
@@ -1075,7 +1097,9 @@
             isLongPress = false;
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                toggleChipStatus(chip, accName, groupName, 'in-progress');
+                let currentStatus = chip.dataset.status;
+                let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
+                toggleChipStatus(chip, accName, groupName, newStatus);
             }, 600);
         });
 
@@ -1228,7 +1252,10 @@
             todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
             activeDateStr = nextDayStr; 
             adWatchedData = {}; 
+            selectedGroupNames = new Set(['R少']); // 新的一天自動打開 R 少佇列
             saveDataToCloud();
+            renderDropdownMenu();
+            renderQueuesBySelection();
             renderAdPanel();
             updateDateLabels();
             updateStats();
@@ -1246,6 +1273,7 @@
                 accountGroups = JSON.parse(JSON.stringify(todayInitialGroups));
             }
 
+            selectedGroupNames = new Set(['R少']); // 重設今日資料時也自動打開 R 少佇列
             renderDropdownMenu();
             renderQueuesBySelection();
             saveDataToCloud();
