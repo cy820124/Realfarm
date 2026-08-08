@@ -186,7 +186,6 @@
             font-size: 13px;
             font-weight: bold;
             color: #c05621;
-            margin-bottom: 6px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -196,7 +195,6 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            min-height: 38px;
             align-items: center;
         }
 
@@ -412,7 +410,7 @@
             color: inherit;
         }
 
-        /* 🎣 釣魚冷卻追蹤滿版 Modal 視窗樣式 */
+        /* 🎣 釣魚冷卻追蹤滿版 Modal 視窗樣式 (無標題設計) */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -435,30 +433,33 @@
             display: flex;
             flex-direction: column;
         }
-        .modal-header {
-            background: #319795;
-            color: white;
-            padding: 14px 16px;
-            font-weight: bold;
-            font-size: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .modal-close-btn {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 0 6px;
-        }
         .modal-body {
             padding: 12px;
             overflow-y: auto;
             flex: 1;
+            position: relative;
         }
+        .modal-floating-close {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: #e53e3e;
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1010;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .modal-floating-close:hover { background: #c53030; }
+
         .fish-group-section {
             margin-bottom: 12px;
         }
@@ -527,21 +528,19 @@
         <span id="adToggleArrow">▼ 展開</span>
     </div>
     <div class="ad-content-body" id="adContentBody">
-        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 包含所有 R 幣帳號與 iOS 帳號，點擊即可切換今日是否已看完廣告：</div>
-        <div class="ad-grid" id="adGridArea">
-            <!-- 動態生成所有帳號的廣告按鈕 -->
-        </div>
+        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 包含所有 R 幣帳號與 iOS 帳號,點擊即可切換今日是否已看完廣告：</div>
+        <div class="ad-grid" id="adGridArea"></div>
     </div>
 </div>
 
 <!-- 📌 今日未完成總覽區 -->
-<div class="pending-overview-container">
+<div class="pending-overview-container" id="pendingOverviewContainer">
     <div class="pending-overview-title">
         <span id="overviewTitleText">🔥 8/8 未完成總覽 (點擊可打勾)</span>
-        <span id="completionRateTag" style="font-size: 12px; background: #c6f6d5; color: #22543d; padding: 2px 6px; border-radius: 4px; font-weight: bold;">0% (0/0)</span>
+        <span id="completionRateTag" style="font-size: 12px; font-weight: bold; color: #22543d;">0/0</span>
     </div>
-    <div class="pending-box" id="pendingOverviewBox">
-        <span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務，太棒了！</span>
+    <div class="pending-box" id="pendingOverviewBox" style="margin-top: 6px;">
+        <span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務,太棒了！</span>
     </div>
 </div>
 
@@ -578,17 +577,9 @@
 <!-- 🎣 釣魚冷卻追蹤滿版 Modal 視窗 -->
 <div class="modal-overlay" id="fishModalOverlay">
     <div class="modal-card">
-        <div class="modal-header">
-            <span>🎣 釣魚冷卻追蹤</span>
-            <button class="modal-close-btn" onclick="closeFishModal()">&times;</button>
-        </div>
+        <button class="modal-floating-close" onclick="closeFishModal()">&times;</button>
         <div class="modal-body">
-            <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">
-                💡 點擊帳號代表「剛釣完魚，進入 10 分鐘冷卻」。已冷卻完或尚未點擊的帳號會優先排在前面（R少優先），讓您輕鬆輪流切換！
-            </div>
-            <div id="fishModalContentContainer">
-                <!-- 動態生成各群組的釣魚按鈕 -->
-            </div>
+            <div id="fishModalContentContainer"></div>
         </div>
     </div>
 </div>
@@ -609,7 +600,6 @@
     const gameRef = db.ref("game_tracker_v5");
 
     let selectedGroupNames = new Set(['R少']);
-    
     let todayInitialGroups = null;
     let accountGroups = null; 
     let devices = [];
@@ -619,10 +609,8 @@
     let activeDateStr = ''; 
     let adWatchedData = {}; 
     let coinData = {}; 
-    
-    // 🎣 釣魚 CD 資料 (記錄各帳號冷卻結束的時間戳記)
     let fishingCdData = {}; 
-    const FISHING_CD_DURATION = 10 * 60 * 1000; // 10分鐘
+    const FISHING_CD_DURATION = 10 * 60 * 1000;
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -632,7 +620,6 @@
             }
         });
 
-        // 每分鐘自動刷新一次釣魚 Modal 的倒數顯示
         setInterval(() => {
             const modal = document.getElementById('fishModalOverlay');
             if (modal.classList.contains('show')) {
@@ -704,7 +691,6 @@
             updatePendingOverview();
             updateQueueAssignedStatus();
 
-            // 若 Modal 正開著，同步更新
             if (document.getElementById('fishModalOverlay').classList.contains('show')) {
                 renderFishModalContent();
             }
@@ -722,7 +708,6 @@
 
     function updateDateLabels() {
         document.getElementById('todayHeaderTitle').innerText = `今日任務 (${activeDateStr}) (可編輯)`;
-        document.getElementById('overviewTitleText').innerText = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
     }
 
     function saveDataToCloud() {
@@ -767,7 +752,6 @@
         gameRef.update(data);
     }
 
-    // 🎣 釣魚 滿版 Modal 控制函數
     function openFishModal() {
         document.getElementById('fishModalOverlay').classList.add('show');
         renderFishModalContent();
@@ -810,7 +794,7 @@
 
             const title = document.createElement('div');
             title.className = 'fish-group-title';
-            title.innerText = `📌 ${groupName}`;
+            title.innerText = `🎣 ${groupName}`;
             section.appendChild(title);
 
             const grid = document.createElement('div');
@@ -937,7 +921,7 @@
             groupWrapper.className = 'visible-queue-group';
             const title = document.createElement('div');
             title.className = 'group-title-tag';
-            title.innerText = `📌 ${groupName}`;
+            title.innerText = `🎯 ${groupName}`;
             groupWrapper.appendChild(title);
             const queueBox = document.createElement('div');
             queueBox.className = 'queue-box';
@@ -1056,26 +1040,16 @@
         chip.dataset.group = groupName;
         chip.dataset.status = status;
 
-        updateChipAppearance(chip, status, accName, isHistory);
+        updateChipAppearance(chip, status, accName, isHistory, false, groupName);
 
         if (!isHistory) {
-            const removeBtn = chip.querySelector('.remove-btn');
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                chip.remove();
-                saveDataToCloud();
-                updateStats();
-                updatePendingOverview();
-                updateQueueAssignedStatus();
-            });
-
             setupChipInteractions(chip, accName, groupName);
         }
 
         zone.appendChild(chip);
     }
 
-    function setupChipInteractions(chip, accName, groupName) {
+    function setupChipInteractions(chip, accName, groupName, isOverview = false) {
         let pressTimer = null;
         let isLongPress = false;
 
@@ -1117,7 +1091,8 @@
     function toggleChipStatus(targetChip, accName, groupName, newStatus) {
         document.querySelectorAll(`.quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => {
             c.dataset.status = newStatus;
-            updateChipAppearance(c, newStatus, accName, false);
+            let isOverview = c.closest('#pendingOverviewBox') !== null;
+            updateChipAppearance(c, newStatus, accName, false, isOverview, groupName);
         });
 
         saveDataToCloud();
@@ -1126,7 +1101,7 @@
         updateQueueAssignedStatus();
     }
 
-    function updateChipAppearance(chip, status, accName, isHistory) {
+    function updateChipAppearance(chip, status, accName, isHistory, isOverview = false, groupName = '') {
         chip.className = `quest-chip ${isHistory ? 'history-chip' : ''}`;
         if (status === 'completed') chip.classList.add('completed');
         if (status === 'in-progress') chip.classList.add('in-progress');
@@ -1136,18 +1111,21 @@
         if (status === 'in-progress') prefix = '⏳ ';
 
         let deviceTagHtml = '';
-        if (chip.dataset.device && !isHistory) {
+        if (chip.dataset.device && !isHistory && !isOverview) {
             deviceTagHtml = `<span class="device-tag">${chip.dataset.device}</span>`;
         }
 
-        chip.innerHTML = `${deviceTagHtml}<span>${prefix}${accName}</span>${!isHistory ? '<span class="remove-btn">&times;</span>' : ''}`;
+        let removeBtnHtml = (!isHistory && !isOverview) ? '<span class="remove-btn">&times;</span>' : '';
+
+        chip.innerHTML = `${deviceTagHtml}<span>${prefix}${accName}</span>${removeBtnHtml}`;
 
         const removeBtn = chip.querySelector('.remove-btn');
         if (removeBtn && !removeBtn.hasAttribute('data-bound')) {
             removeBtn.setAttribute('data-bound', 'true');
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.querySelectorAll(`.today-zone .quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => c.remove());
+                const targetGroup = chip.dataset.group || groupName;
+                document.querySelectorAll(`.today-zone .quest-chip[data-name="${accName}"][data-group="${targetGroup}"]`).forEach(c => c.remove());
                 saveDataToCloud();
                 updateStats();
                 updatePendingOverview();
@@ -1174,8 +1152,11 @@
             }
         });
 
+        const titleText = document.getElementById('overviewTitleText');
+        titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
+
         if (pendingChips.length === 0) {
-            box.innerHTML = '<span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務，太棒了！</span>';
+            box.innerHTML = ''; 
             return;
         }
 
@@ -1186,8 +1167,8 @@
             chip.dataset.status = item.status;
             chip.dataset.device = item.device;
 
-            updateChipAppearance(chip, item.status, item.name, false);
-            setupChipInteractions(chip, item.name, item.group);
+            updateChipAppearance(chip, item.status, item.name, false, true, item.group);
+            setupChipInteractions(chip, item.name, item.group, true);
             box.appendChild(chip);
         });
     }
@@ -1206,15 +1187,18 @@
     function updateStats() {
         const total = document.querySelectorAll('.today-zone .quest-chip').length;
         const comp = document.querySelectorAll('.today-zone .quest-chip.completed').length;
-        const percent = total > 0 ? Math.round((comp / total) * 100) : 0;
         
         const rateTag = document.getElementById('completionRateTag');
-        rateTag.innerText = `${percent}% (${comp}/${total})`;
+        if (total > 0 && comp === total) {
+            rateTag.innerHTML = `<span style="font-size: 20px;">💯</span> (${comp}/${total})`;
+        } else {
+            rateTag.innerText = `${comp}/${total}`;
+        }
     }
 
     function shiftToNextDay() {
         const nextDayStr = getFormattedDate(new Date());
-        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動為所有 !今天有看過廣告」的帳號 R 幣數量 +1！`)) {
+        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動為所有今天有看過廣告的帳號 R 幣數量 +1！`)) {
             
             if (adWatchedData && coinData) {
                 Object.keys(adWatchedData).forEach(accName => {
