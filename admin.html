@@ -30,25 +30,26 @@
         h2 { font-size: 15px; color: #4a5568; margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
         .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
         input, textarea, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e0; box-sizing: border-box; }
-        input, textarea { flex: 1; }
-        /* 💡 調整文字框高度與寬度，讓編輯更舒適 */
+        input { flex: 1; min-width: 0; }
         textarea { resize: vertical; height: 160px; font-family: monospace; width: 100%; }
-        button { background: #3182ce; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button { background: #3182ce; color: white; border: none; cursor: pointer; font-weight: bold; white-space: nowrap; }
         button.danger { background: #e53e3e; }
         button.secondary { background: #718096; font-size: 12px; padding: 6px 14px; }
         button.success { background: #38a169; }
         
         .editable-panel { display: none; }
+        
         .add-account-panel {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
             padding: 12px;
             margin-top: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: none;
         }
         .add-account-title { font-size: 13px; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
+        .add-account-row { display: flex; gap: 8px; align-items: center; }
 
         .item-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .badge {
@@ -81,7 +82,46 @@
     <button class="secondary" onclick="toggleEditMode()" id="editModeBtn">🔓 開啟新增/刪除與匯入匯出模式</button>
 </div>
 
-<!-- 📥 匯入與匯出專區 (放大文字框寬高) -->
+<!-- 1. 帳號 R 幣數量維護 -->
+<div class="card">
+    <h2>🪙 帳號R幣數量維護</h2>
+
+    <div class="add-account-panel" id="addAccountPanel">
+        <div class="add-account-title">✨ 新增新帳號</div>
+        <div class="add-account-row">
+            <input type="text" id="newAccNameInput" placeholder="帳號代號 (例: 38)">
+            <input type="number" id="newAccCoinInput" placeholder="初始金幣" style="width: 110px; flex: 0 0 110px;">
+            <button onclick="addNewAccount()">確認新增</button>
+        </div>
+    </div>
+
+    <div style="font-size: 12px; color: #718096; margin-bottom: 8px; margin-top: 5px;">
+        💡 <b>點擊即自動全選數字</b>：點入金幣欄位後可直接輸入新數字，跨群組會自動移至新群組尾端。點擊表頭可切換排序！
+    </div>
+    <div id="coinTableArea">載入中...</div>
+</div>
+
+<!-- 2. IOS 帳號管理 -->
+<div class="card">
+    <h2>🍏 IOS 帳號管理 (手動清單)</h2>
+    <div class="input-group editable-panel" id="iosInputPanel">
+        <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
+        <button onclick="addIosAccount()">新增IOS帳號</button>
+    </div>
+    <div class="item-list" id="iosListArea">載入中...</div>
+</div>
+
+<!-- 3. 裝置清單管理 -->
+<div class="card">
+    <h2>📱 裝置清單管理</h2>
+    <div class="input-group editable-panel" id="deviceInputPanel">
+        <input type="text" id="newDeviceInput" placeholder="輸入新裝置名稱 (例: Pro)">
+        <button onclick="addDevice()">新增裝置</button>
+    </div>
+    <div class="item-list" id="deviceListArea">載入中...</div>
+</div>
+
+<!-- 4. 匯入與匯出專區 -->
 <div class="card editable-panel" id="syncPanel" style="background: #f0fff4; border: 1px solid #c6f6d5;">
     <h2 style="color: #22543d; border-bottom-color: #9ae6b4;">📥 匯入與匯出設定文字</h2>
     <div style="font-size: 12px; color: #2f855a; margin-bottom: 8px;">
@@ -92,45 +132,6 @@
         <button class="secondary" onclick="exportToText()">📤 匯出目前設定為文字</button>
         <button class="success" onclick="importFromText()">⚡ 執行文字匯入</button>
     </div>
-</div>
-
-<!-- 裝置管理 -->
-<div class="card">
-    <h2>📱 裝置清單管理</h2>
-    <div class="input-group editable-panel" id="deviceInputPanel">
-        <input type="text" id="newDeviceInput" placeholder="輸入新裝置名稱 (例: Pro)">
-        <button onclick="addDevice()">新增裝置</button>
-    </div>
-    <div class="item-list" id="deviceListArea">載入中...</div>
-</div>
-
-<!-- IOS 獨立群組管理 -->
-<div class="card">
-    <h2>🍏 IOS 帳號管理 (手動清單)</h2>
-    <div class="input-group editable-panel" id="iosInputPanel">
-        <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
-        <button onclick="addIosAccount()">新增IOS帳號</button>
-    </div>
-    <div class="item-list" id="iosListArea">載入中...</div>
-</div>
-
-<!-- R 幣帳號金幣與自動分類管理 -->
-<div class="card">
-    <h2>🪙 R幣帳號金幣維護與分組</h2>
-
-    <div class="add-account-panel" id="addAccountPanel">
-        <div class="add-account-title">✨ 新增新帳號</div>
-        <div class="input-group" style="margin-bottom: 0;">
-            <input type="text" id="newAccNameInput" placeholder="帳號代號 (例: 38)">
-            <input type="number" id="newAccCoinInput" placeholder="初始金幣" style="max-width: 120px;">
-            <button onclick="addNewAccount()">確認新增</button>
-        </div>
-    </div>
-
-    <div style="font-size: 12px; color: #718096; margin-bottom: 8px; margin-top: 5px;">
-        💡 <b>直接在表格裡修改金幣</b>：同區內改金幣順序不動，跨群組才會移至新群組尾端。點擊表頭可切換排序！
-    </div>
-    <div id="coinTableArea">載入中...</div>
 </div>
 
 <script>
@@ -352,7 +353,7 @@
         let html = `<table><thead><tr>
             <th onclick="sortTable('group')">群組 ↕</th>
             <th onclick="sortTable('name')">帳號 ↕</th>
-            <th onclick="sortTable('coin')">目前金幣 (點擊可直接改) ↕</th>`;
+            <th onclick="sortTable('coin')">目前金幣 (點擊直接輸入) ↕</th>`;
         
         if (showEditMode) html += `<th>操作</th>`;
         html += `</tr></thead><tbody>`;
@@ -364,7 +365,9 @@
                 html += `<tr>
                     <td><span style="background:#edf2f7; padding:2px 6px; border-radius:4px; font-size:11px;">${item.group}</span></td>
                     <td><b>${item.name}</b></td>
-                    <td><input type="number" class="coin-input" value="${item.coin}" placeholder="-" onchange="updateCoinDirectly('${item.name}', this.value)"></td>`;
+                    <td><input type="number" class="coin-input" value="${item.coin}" placeholder="-" 
+                        onfocus="this.select()" 
+                        onchange="updateCoinDirectly('${item.name}', this.value)"></td>`;
                 
                 if (showEditMode) {
                     html += `<td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeRspAcc('${item.name}')">刪除</button></td>`;
