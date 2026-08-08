@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realfarm R幣後台管理</title>
+    
+    <!-- Firebase SDK (9.x 相容版) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { text-align: center; color: #2c3e50; font-size: 20px; }
+        .card {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+        }
+        h2 { font-size: 15px; color: #4a5568; margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        input, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e0; }
+        input { flex: 1; }
+        button { background: #3182ce; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button.danger { background: #e53e3e; }
+        .item-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .badge {
+            background: #edf2f7;
+            padding: 6px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #cbd5e0;
+        }
+        .badge span { cursor: pointer; color: #a0aec0; font-weight: bold; }
+        .badge span:hover { color: #e53e3e; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+        th, td { border: 1px solid #e2e8f0; padding: 6px; text-align: center; }
+        th { background: #f7fafc; }
+        .back-link { display: block; text-align: center; margin-bottom: 15px; color: #3182ce; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<a href="index.html" class="back-link">⬅️ 返回遊戲主畫面</a>
+<h1>⚙️ 後台管理中心</h1>
+
+<!-- 裝置管理 -->
+<div class="card">
+    <h2>📱 裝置清單管理</h2>
+    <div class="input-group">
+        <input type="text" id="newDeviceInput" placeholder="輸入新裝置名稱 (例: Pro)">
+        <button onclick="addDevice()">新增裝置</button>
+    </div>
+    <div class="item-list" id="deviceListArea"></div>
+</div>
+
+<!-- IOS 獨立群組管理 -->
+<div class="card">
+    <h2>🍏 IOS 帳號管理 (手動清單)</h2>
+    <div class="input-group">
+        <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
+        <button onclick="addIosAccount()">新增IOS帳號</button>
+    </div>
+    <div class="item-list" id="iosListArea"></div>
+</div>
+
+<!-- R 幣帳號金幣與自動分類管理 -->
+<div class="card">
+    <h2>🪙 R幣帳號金幣維護 (自動分配 R少 / R中 / R多)</h2>
+    <div class="input-group">
+        <input type="text" id="accNameInput" placeholder="帳號代號 (例: 31)">
+        <input type="number" id="accCoinInput" placeholder="目前金幣數量" style="max-width: 120px;">
+        <button onclick="saveOrUpdateAccountCoin()">更新/新增</button>
+    </div>
+    <div style="font-size: 12px; color: #718096; margin-bottom: 8px;">
+        💡 規則：金幣 &lt; 200 ➔ <b>R少</b> | 金幣 &lt; 300 ➔ <b>R中</b> | 其餘 ➔ <b>R多</b><br>
+        *(跨群組會自動移至新群組尾端，同群組內原有順序保持不變)*
+    </div>
+    <div id="coinTableArea"></div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyC-5eJaWoM9yQfOtkbjEkm922KQ1Zpbs1A",
+        authDomain: "realfarm-todolist.firebaseapp.com",
+        databaseURL: "https://realfarm-todolist-default-rtdb.firebaseio.com",
+        projectId: "realfarm-todolist",
+        storageBucket: "realfarm-todolist.firebasestorage.app",
+        messagingSenderId: "93416320476",
+        appId: "1:93416320476:web:ca4b13550e5771cf1ff319"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const gameRef = db.ref("game_tracker_v5");
+
+    let cloudData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        gameRef.on('value', (snapshot) => {
+            cloudData = snapshot.val();
+            if (!cloudData) {
+                // 初始化預設結構
+                cloudData = {
+                    devices: ['C3', 'Realme', 'Pixel', 'Sony', 'S10', '15', 'IPad', 'Se', 'IPhone13', '嘉琪'],
+                    groups: {
+                        'R少': ['31', '24', '26', '35', '22', '28', '30', '19', '21', '15', '20', '18', '2', '6', '7', '25', '3', '9', '5', '27', '23', '4', '33', '29'],
+                        'R中': ['8', '34', '9', '36', '14', '10', '12'],
+                        'R多': ['1', '11', '13', '16', '17', '32'],
+                        'IOS': ['寶', '睡', '可', '此', '想', '來', '雲', '風']
+                    },
+                    coins: {} // 記錄每個帳號金幣
+                };
+                gameRef.set(cloudData);
+            }
+            if (!cloudData.coins) cloudData.coins = {};
+            renderAdminUI();
+        });
+    });
+
+    function saveToCloud() {
+        gameRef.set(cloudData);
+    }
+
+    function renderAdminUI() {
+        // 1. 渲染裝置清單
+        const devArea = document.getElementById('deviceListArea');
+        devArea.innerHTML = '';
+        (cloudData.devices || []).forEach((dev, idx) => {
+            const badge = document.createElement('div');
+            badge.className = 'badge';
+            badge.innerHTML = `${dev} <span onclick="removeDevice(${idx})">&times;</span>`;
+            devArea.appendChild(badge);
+        });
+
+        // 2. 渲染 IOS 帳號
+        const iosArea = document.getElementById('iosListArea');
+        iosArea.innerHTML = '';
+        const iosList = cloudData.groups['IOS'] || [];
+        iosList.forEach((acc, idx) => {
+            const badge = document.createElement('div');
+            badge.className = 'badge';
+            badge.innerHTML = `${acc} <span onclick="removeIos(${idx})">&times;</span>`;
+            iosArea.appendChild(badge);
+        });
+
+        // 3. 渲染 R 幣帳號與金幣表
+        const coinArea = document.getElementById('coinTableArea');
+        let html = `<table><thead><tr><th>群組</th><th>帳號</th><th>目前金幣</th><th>操作</th></tr></thead><tbody>`;
+        
+        ['R少', 'R中', 'R多'].forEach(gName => {
+            const list = cloudData.groups[gName] || [];
+            list.forEach(acc => {
+                const coin = cloudData.coins[acc] !== undefined ? cloudData.coins[acc] : '';
+                html += `<tr>
+                    <td><b>${gName}</b></td>
+                    <td>${acc}</td>
+                    <td>${coin}</td>
+                    <td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeR միAcc('${acc}')">刪除</button></td>
+                </tr>`;
+            });
+        });
+        html += `</tbody></table>`;
+        coinArea.innerHTML = html;
+    }
+
+    // 裝置操作
+    function addDevice() {
+        const val = document.getElementById('newDeviceInput').value.trim();
+        if (!val) return;
+        if (!cloudData.devices) cloudData.devices = [];
+        cloudData.devices.push(val);
+        document.getElementById('newDeviceInput').value = '';
+        saveToCloud();
+    }
+    function removeDevice(idx) {
+        cloudData.devices.splice(idx, 1);
+        saveToCloud();
+    }
+
+    // IOS 操作
+    function addIosAccount() {
+        const val = document.getElementById('newIosInput').value.trim();
+        if (!val) return;
+        if (!cloudData.groups['IOS']) cloudData.groups['IOS'] = [];
+        cloudData.groups['IOS'].push(val);
+        document.getElementById('newIosInput').value = '';
+        saveToCloud();
+    }
+    function removeIos(idx) {
+        cloudData.groups['IOS'].splice(idx, 1);
+        saveToCloud();
+    }
+
+    // R幣帳號金幣與智能歸類核心邏輯
+    function saveOrUpdateAccountCoin() {
+        const acc = document.getElementById('accNameInput').value.trim();
+        const coinVal = document.getElementById('accCoinInput').value.trim();
+        if (!acc || coinVal === '') {
+            alert('請完整輸入帳號與金幣數量！');
+            return;
+        }
+        const coin = Number(coinVal);
+
+        // 依金幣自動決定目標群組
+        let targetGroup = 'R少';
+        if (coin < 200) targetGroup = 'R少';
+        else if (coin < 300) targetGroup = 'R中';
+        else targetGroup = 'R多';
+
+        // 檢查該帳號本來在哪個群組
+        let currentGroup = null;
+        ['R少', 'R中', 'R多'].forEach(g => {
+            if (!cloudData.groups[g]) cloudData.groups[g] = [];
+            const idx = cloudData.groups[g].indexOf(acc);
+            if (idx > -1) {
+                currentGroup = g;
+                // 如果還在同群組，先把它從原本位置抽出來檢查
+                cloudData.groups[g].splice(idx, 1);
+            }
+        });
+
+        // 確保目標群組存在
+        if (!cloudData.groups[targetGroup]) cloudData.groups[targetGroup] = [];
+
+        if (currentGroup === targetGroup) {
+            // 情況 A：仍在同一個群組內 ➔ 保持原本的相對順序不動，我們把它放回原位（或如果原本找不到就推到尾端）
+            // 簡單起見，同區內金幣變動不改變現有陣列順序，若新帳號則推尾端
+            cloudData.groups[targetGroup].push(acc);
+        } else {
+            // 情況 B：跨區跳槽 ➔ 加到新群組的最後面！不影響其他人的順序
+            cloudData.groups[targetGroup].push(acc);
+        }
+
+        // 記錄金幣
+        if (!cloudData.coins) cloudData.coins = {};
+        cloudData.coins[acc] = coin;
+
+        document.getElementById('accNameInput').value = '';
+        document.getElementById('accCoinInput').value = '';
+        saveToCloud();
+        alert(`帳號【${acc}】已更新金幣 ${coin}，並自動歸類至【${targetGroup}】群組！`);
+    }
+
+    function removeR միAcc(acc) {
+        if (!confirm(`確定要刪除帳號 ${acc} 嗎？`)) return;
+        ['R少', 'R中', 'R多'].forEach(g => {
+            if (cloudData.groups[g]) {
+                const idx = cloudData.groups[g].indexOf(acc);
+                if (idx > -1) cloudData.groups[g].splice(idx, 1);
+            }
+        });
+        if (cloudData.coins && cloudData.coins[acc] !== undefined) {
+            delete cloudData.coins[acc];
+        }
+        saveToCloud();
+    }
+</script>
+
+</body>
+</html>
