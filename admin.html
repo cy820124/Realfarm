@@ -127,14 +127,16 @@
     <div id="coinTableArea">載入中...</div>
 </div>
 
-<!-- 2. IOS 帳號管理 -->
+<!-- 2. IOS 帳號管理與獨立金幣維護 -->
 <div class="card">
-    <h2>🍏 IOS 帳號管理 (手動清單)</h2>
+    <h2>🍏 IOS 帳號管理與金幣維護</h2>
     <div class="input-group editable-panel" id="iosInputPanel">
         <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
         <button onclick="addIosAccount()">新增IOS帳號</button>
     </div>
     <div class="item-list" id="iosListArea">載入中...</div>
+    
+    <div style="margin-top: 12px;" id="iosCoinTableArea">載入中...</div>
 </div>
 
 <!-- 3. 裝置清單管理 -->
@@ -153,7 +155,7 @@
     <div style="font-size: 12px; color: #2f855a; margin-bottom: 8px;">
         你可以點擊「匯出目前設定」將現有清單轉成文字備份，或將文字貼上後點擊「執行文字匯入」更新雲端：
     </div>
-    <textarea id="importTextInput" placeholder="[裝置]&#10;C3, Realme&#10;&#10;[IOS]&#10;寶, 睡&#10;&#10;[R少]&#10;31:0"></textarea>
+    <textarea id="importTextInput" placeholder="[裝置]&#10;C3, Realme&#10;&#10;[IOS]&#10;寶:0, 睡:0&#10;&#10;[R少]&#10;31:0"></textarea>
     <div style="display: flex; justify-content: space-between; margin-top: 8px;">
         <button class="secondary" style="width: auto;" onclick="exportToText()">📤 匯出目前設定為文字</button>
         <button class="success" onclick="importFromText()">⚡ 執行文字匯入</button>
@@ -197,6 +199,7 @@
             if (!cloudData.devices) cloudData.devices = [];
             if (!cloudData.groups) cloudData.groups = {};
             if (!cloudData.coins) cloudData.coins = {};
+            if (!cloudData.groups['IOS']) cloudData.groups['IOS'] = [];
 
             renderAdminUI();
         });
@@ -216,7 +219,11 @@
 
         textLines.push('[IOS]');
         let iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
-        textLines.push(iosList.join(', '));
+        let formattedIos = iosList.map(acc => {
+            let coin = (cloudData.coins && cloudData.coins[acc] !== undefined) ? cloudData.coins[acc] : 0;
+            return `${acc}:${coin}`;
+        });
+        textLines.push(formattedIos.join(', '));
         textLines.push('');
 
         ['R少', 'R中', 'R多'].forEach(gName => {
@@ -263,10 +270,7 @@
 
             if (currentSection === '裝置') {
                 newDevices.push(...items);
-            } else if (currentSection === 'IOS') {
-                if (!newGroups['IOS']) newGroups['IOS'] = [];
-                newGroups['IOS'].push(...items);
-            } else if (['R少', 'R中', 'R多'].includes(currentSection)) {
+            } else if (['R少', 'R中', 'R多', 'IOS'].includes(currentSection)) {
                 if (!newGroups[currentSection]) newGroups[currentSection] = [];
                 items.forEach(item => {
                     let parts = item.split(':');
@@ -371,6 +375,33 @@
                 iosArea.appendChild(badge);
             });
         }
+
+        // 渲染獨立的 IOS 金幣維護表格
+        const iosCoinArea = document.getElementById('iosCoinTableArea');
+        let iosCoinHtml = `<table><thead><tr>
+            <th>IOS 帳號</th>
+            <th>目前金幣 (點擊直接輸入)</th>`;
+        if (showEditMode) iosCoinHtml += `<th>操作</th>`;
+        iosCoinHtml += `</tr></thead><tbody>`;
+
+        if (iosList.length === 0) {
+            iosCoinHtml += `<tr><td colspan="${showEditMode ? 3 : 2}" style="color:#a0aec0; padding:10px;">目前沒有 IOS 帳號可維護金幣</td></tr>`;
+        } else {
+            iosList.forEach((acc) => {
+                let coin = (cloudData.coins && cloudData.coins[acc] !== undefined) ? cloudData.coins[acc] : '';
+                iosCoinHtml += `<tr>
+                    <td><b>${acc}</b></td>
+                    <td><input type="number" inputmode="numeric" class="coin-input" value="${coin}" placeholder="-" 
+                        onfocus="this.select()" 
+                        onchange="updateIosCoinDirectly('${acc}', this.value)"></td>`;
+                if (showEditMode) {
+                    iosCoinHtml += `<td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeIosByName('${acc}')">刪除</button></td>`;
+                }
+                iosCoinHtml += `</tr>`;
+            });
+        }
+        iosCoinHtml += `</tbody></table>`;
+        iosCoinArea.innerHTML = iosCoinHtml;
 
         let allAccounts = [];
         ['R少', 'R中', 'R多'].forEach(gName => {
@@ -483,6 +514,16 @@
         saveToCloud();
     }
 
+    function updateIosCoinDirectly(accName, coinVal) {
+        if (!cloudData.coins) cloudData.coins = {};
+        if (coinVal === '') {
+            delete cloudData.coins[accName];
+        } else {
+            cloudData.coins[accName] = Number(coinVal);
+        }
+        saveToCloud();
+    }
+
     function addNewAccount() {
         const acc = document.getElementById('newAccNameInput').value.trim();
         const coinVal = document.getElementById('newAccCoinInput').value.trim();
@@ -498,7 +539,7 @@
         else targetGroup = 'R多';
 
         let exists = false;
-        ['R少', 'R中', 'R多'].forEach(g => {
+        ['R少', 'R中', 'R多', 'IOS'].forEach(g => {
             if (cloudData.groups[g] && cloudData.groups[g].includes(acc)) exists = true;
         });
 
@@ -541,6 +582,18 @@
     }
     function removeIos(idx) {
         cloudData.groups['IOS'].splice(idx, 1);
+        saveToCloud();
+    }
+    function removeIosByName(accName) {
+        if (!confirm(`確定要刪除 IOS 帳號 ${accName} 嗎？`)) return;
+        const iosList = cloudData.groups['IOS'];
+        if (iosList) {
+            const idx = iosList.indexOf(accName);
+            if (idx > -1) iosList.splice(idx, 1);
+        }
+        if (cloudData.coins && cloudData.coins[accName] !== undefined) {
+            delete cloudData.coins[accName];
+        }
         saveToCloud();
     }
 
