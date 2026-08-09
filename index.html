@@ -429,7 +429,7 @@
             color: inherit;
         }
 
-        /* 🎣 釣魚冷卻追蹤滿版 Modal 視窗樣式 (無標題設計) */
+        /* 🎣 釣魚冷卻追蹤滿版 Modal 視窗樣式 */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -457,6 +457,9 @@
             overflow-y: auto;
             flex: 1;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .modal-floating-close {
             position: fixed;
@@ -523,6 +526,65 @@
             font-size: 10px;
             color: #e53e3e;
             margin-top: 1px;
+        }
+
+        /* 🎣 Modal 底部下次釣魚時間專用卡片樣式 (已放大字體與區塊) */
+        .modal-timer-card {
+            background: #f0fff4;
+            border: 2px solid #9ae6b4;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 15px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .modal-timer-card.fishing-now {
+            background: #ebf8ff;
+            border-color: #90cdf4;
+        }
+        .modal-timer-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #22543d;
+            margin-bottom: 6px;
+        }
+        .modal-timer-card.fishing-now .modal-timer-title {
+            color: #2b6cb0;
+        }
+        #modalFishingTimerDisplay {
+            font-size: 22px;
+            font-weight: bold;
+            color: #276749;
+            letter-spacing: 0.5px;
+        }
+        .modal-timer-card.fishing-now #modalFishingTimerDisplay {
+            color: #2b6cb0;
+        }
+
+        /* ⚠️ 準備釣魚提醒專屬 Modal 樣式 */
+        .ready-fish-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .ready-fish-modal-overlay.show { display: flex; }
+        .ready-fish-card {
+            background: #ffffff;
+            padding: 25px 20px;
+            border-radius: 12px;
+            width: 280px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            animation: modalPopup 0.2s ease-in-out;
+        }
+        @keyframes modalPopup {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
@@ -598,8 +660,25 @@
     <div class="modal-card">
         <button class="modal-floating-close" onclick="closeFishModal()">&times;</button>
         <div class="modal-body">
-            <div id="fishModalContentContainer"></div>
+            <div>
+                <div id="fishModalContentContainer"></div>
+            </div>
+            <!-- 🎣 Modal 底部的下次釣魚時間專用語法 (已放大尺寸與文字) -->
+            <div class="modal-timer-card" id="modalTimerCard">
+                <div class="modal-timer-title" id="modalTimerTitle">🎣 目前推算下次釣魚</div>
+                <div id="modalFishingTimerDisplay">載入中...</div>
+            </div>
         </div>
+    </div>
+</div>
+
+<!-- ⚠️ 準備釣魚提醒專屬 Modal 視窗 -->
+<div class="ready-fish-modal-overlay" id="readyFishModal">
+    <div class="ready-fish-card">
+        <h3 id="readyModalTitle" style="margin-top: 0; color: #e53e3e; font-size: 18px;">⚠️ 準備要開始釣魚啦！</h3>
+        <p style="font-size: 13px; color: #4a5568; margin: 10px 0;">距離下次釣魚還有：</p>
+        <div id="readyModalCountdown" style="font-size: 26px; font-weight: bold; color: #2b6cb0; margin-bottom: 20px;">00:00</div>
+        <button onclick="closeReadyFishModal()" style="background: #718096; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">我知道了 (隱藏視窗)</button>
     </div>
 </div>
 
@@ -629,6 +708,11 @@
     let coinData = {}; 
     let fishingCdData = {}; 
     let yesterdayCompleteTimes = {}; 
+    let cloudDataGlobal = null; 
+    
+    let hasAlerted5Min = false;
+    let hasAlerted2Min = false;
+    let readyModalManuallyClosed = false; 
     
     const FISHING_CD_DURATION = 60 * 60 * 1000;
     const FISHING_CD_OFFSET = 45 * 60 * 1000;
@@ -645,7 +729,9 @@
             const modal = document.getElementById('fishModalOverlay');
             if (modal.classList.contains('show')) {
                 renderFishModalContent();
+                updateModalFishingTimerOnly();
             }
+            checkReadyFishModalTimer();
         }, 1000);
     });
 
@@ -657,6 +743,7 @@
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
+            cloudDataGlobal = data; 
             isRemoteUpdating = true;
 
             const DEFAULT_GROUPS = {
@@ -728,11 +815,154 @@
 
             if (document.getElementById('fishModalOverlay').classList.contains('show')) {
                 renderFishModalContent();
+                updateModalFishingTimerOnly();
             }
 
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
+    }
+
+    // 🎣 釣魚中自動調整底部 Modal 顯示狀態
+    function updateModalFishingTimerOnly() {
+        if (!cloudDataGlobal || !cloudDataGlobal.nextFishingTime) return;
+
+        const intervalMinutes = Number(cloudDataGlobal.fishingInterval) || 365;
+        const durationMinutes = Number(cloudDataGlobal.fishingDuration) || 61;
+        let nextTime = new Date(cloudDataGlobal.nextFishingTime);
+        const now = new Date();
+
+        let updated = false;
+        while (new Date(nextTime.getTime() + durationMinutes * 60000) <= now) {
+            nextTime.setMinutes(nextTime.getMinutes() + intervalMinutes);
+            updated = true;
+        }
+
+        if (updated) {
+            cloudDataGlobal.nextFishingTime = nextTime.toISOString();
+            gameRef.update({ nextFishingTime: cloudDataGlobal.nextFishingTime });
+        }
+
+        const durationMs = durationMinutes * 60 * 1000;
+        const endTime = new Date(nextTime.getTime() + durationMs);
+        const timerCard = document.getElementById('modalTimerCard');
+        const timerTitle = document.getElementById('modalTimerTitle');
+        const displayEl = document.getElementById('modalFishingTimerDisplay');
+        if (!displayEl) return;
+
+        // 判斷是否正在釣魚中
+        if (now >= nextTime && now <= endTime) {
+            const remainMs = endTime - now;
+            const remainTotalSecs = Math.ceil(remainMs / 1000);
+            const remainColon = formatTimerColon(remainTotalSecs);
+
+            // 釣魚中：改變卡片樣式並顯示目前正在釣魚中與剩餘時間
+            timerCard.className = 'modal-timer-card fishing-now';
+            timerTitle.innerText = '🎣 目前狀態';
+            displayEl.style.color = "#2b6cb0";
+            displayEl.innerHTML = `正在釣魚中 (剩餘 ${remainColon})`;
+            return;
+        }
+
+        // 非釣魚中（冷卻倒數）：恢復「目前推算下次釣魚」的顯示
+        timerCard.className = 'modal-timer-card';
+        timerTitle.innerText = '🎣 目前推算下次釣魚';
+
+        const year = nextTime.getFullYear();
+        const month = String(nextTime.getMonth() + 1).padStart(2, '0');
+        const day = String(nextTime.getDate()).padStart(2, '0');
+        const hours = String(nextTime.getHours()).padStart(2, '0');
+        const minutes = String(nextTime.getMinutes()).padStart(2, '0');
+        const formattedTime = `${year}/${month}/${day} ${hours}:${minutes}`;
+
+        const diffMs = nextTime - now;
+        let countdownStr = "";
+        if (diffMs > 0) {
+            const totalSecs = Math.floor(diffMs / 1000);
+            countdownStr = `(${formatTimerColon(totalSecs)})`;
+        }
+
+        if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
+            displayEl.style.color = "#e53e3e";
+            displayEl.innerHTML = `⚠️ 準備釣魚！<br>${formattedTime} <span style="font-size:16px;">${countdownStr}</span>`;
+        } else {
+            displayEl.style.color = "#276749";
+            displayEl.innerHTML = `${formattedTime} <span style="font-size:16px; color:#4a5568;">${countdownStr}</span>`;
+        }
+    }
+
+    function formatTimerColon(totalSecs) {
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        if (h > 0) {
+            const hh = String(h).padStart(2, '0');
+            return `${hh}:${mm}:${ss}`;
+        } else {
+            return `${mm}:${ss}`;
+        }
+    }
+
+    function checkReadyFishModalTimer() {
+        if (!cloudDataGlobal || !cloudDataGlobal.nextFishingTime) return;
+
+        const nextTime = new Date(cloudDataGlobal.nextFishingTime);
+        const durationMinutes = Number(cloudDataGlobal.fishingDuration) || 61;
+        const now = new Date();
+
+        const diffMs = nextTime - now;
+        const durationMs = durationMinutes * 60 * 1000;
+        const endTime = new Date(nextTime.getTime() + durationMs);
+
+        const modal = document.getElementById('readyFishModal');
+        const countdownEl = document.getElementById('readyModalCountdown');
+        const modalTitle = document.getElementById('readyModalTitle');
+
+        if (now >= endTime || diffMs <= 0) {
+            modal.classList.remove('show');
+            hasAlerted5Min = false;
+            hasAlerted2Min = false;
+            readyModalManuallyClosed = false;
+            return;
+        }
+
+        const totalSecs = Math.ceil(diffMs / 1000);
+        countdownEl.innerText = formatTimeColon(totalSecs);
+
+        if (diffMs <= 2 * 60 * 1000 && !hasAlerted2Min) {
+            hasAlerted2Min = true;
+            readyModalManuallyClosed = false; 
+            modalTitle.innerHTML = '🚨 快要釣魚了！準備準備！';
+            modal.classList.add('show');
+            return;
+        }
+
+        if (diffMs <= 5 * 60 * 1000 && diffMs > 2 * 60 * 1000 && !hasAlerted5Min) {
+            hasAlerted5Min = true;
+            readyModalManuallyClosed = false;
+            modalTitle.innerHTML = '⚠️ 準備要開始釣魚啦！';
+            modal.classList.add('show');
+            return;
+        }
+
+        if (readyModalManuallyClosed) {
+            modal.classList.remove('show');
+        }
+    }
+
+    function formatTimeColon(totalSecs) {
+        const m = Math.floor(totalSecs / 60);
+        const s = totalSecs % 60;
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        return `${mm}:${ss}`;
+    }
+
+    function closeReadyFishModal() {
+        document.getElementById('readyFishModal').classList.remove('show');
+        readyModalManuallyClosed = true; 
     }
 
     function getFormattedDate(dateObj) {
@@ -794,6 +1024,7 @@
     function openFishModal() {
         document.getElementById('fishModalOverlay').classList.add('show');
         renderFishModalContent();
+        updateModalFishingTimerOnly();
     }
 
     function closeFishModal() {
@@ -1240,7 +1471,6 @@
             }
         });
 
-        // 💡 讓未完成總覽的標題完美同步目前開新一天的日期變數
         const titleText = document.getElementById('overviewTitleText');
         titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
 
