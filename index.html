@@ -301,13 +301,24 @@
             background: #edf2f7;
             border: 1px solid #cbd5e0;
             border-radius: 18px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             color: #2d3748;
             cursor: grab;
             outline: none;
             -webkit-appearance: none;
             touch-action: manipulation;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
+        }
+
+        .queue-btn .yest-time-sub {
+            font-size: 10px;
+            color: #718096;
+            font-weight: normal;
+            margin-top: 1px;
         }
 
         .queue-btn.assigned {
@@ -544,7 +555,7 @@
 <!-- 📌 今日未完成總覽區 -->
 <div class="pending-overview-container" id="pendingOverviewContainer">
     <div class="pending-overview-title">
-        <span id="overviewTitleText">🔥 8/8 未完成總覽 (點擊可打勾)</span>
+        <span id="overviewTitleText">🔥 未完成總覽 (點擊可打勾)</span>
         <span id="completionRateTag" style="font-size: 12px; font-weight: bold; color: #22543d;">0/0</span>
     </div>
     <div class="pending-box" id="pendingOverviewBox" style="margin-top: 6px;">
@@ -617,10 +628,9 @@
     let adWatchedData = {}; 
     let coinData = {}; 
     let fishingCdData = {}; 
+    let yesterdayCompleteTimes = {}; 
     
-    // 💡 底層冷卻設為 1 小時 (60 * 60 * 1000 毫秒)，確保排序絕對夠長
     const FISHING_CD_DURATION = 60 * 60 * 1000;
-    // 💡 畫面顯示時扣除 45 分鐘 (45 * 60 * 1000 毫秒)，讓倒數看起來只有 15 分鐘
     const FISHING_CD_OFFSET = 45 * 60 * 1000;
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -668,6 +678,7 @@
                 adWatchedData = {};
                 coinData = {};
                 fishingCdData = {};
+                yesterdayCompleteTimes = {};
                 saveDataToCloud();
             } else {
                 accountGroups = data.groups || DEFAULT_GROUPS;
@@ -677,6 +688,7 @@
                 adWatchedData = data.adWatched || {};
                 coinData = data.coins || {};
                 fishingCdData = data.fishing_cd_v2 || {};
+                yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
             }
 
             initTable();
@@ -690,13 +702,24 @@
             if (data && data.today) {
                 Object.keys(data.today).forEach(device => {
                     const zone = document.querySelector(`.today-zone[data-device="${device}"]`);
-                    if (zone) data.today[device].forEach(item => addChip(zone, item.name, item.group, item.status || (item.completed ? 'completed' : 'normal'), false));
+                    if (zone) {
+                        data.today[device].forEach(item => {
+                            const uid = item.uid || ('chip_' + Math.random().toString(36).substr(2, 9));
+                            const completedAt = item.completedAt || null;
+                            addChip(zone, item.name, item.group, item.status || 'normal', false, uid, completedAt);
+                        });
+                    }
                 });
             }
             if (data && data.yesterday) {
                 Object.keys(data.yesterday).forEach(device => {
                     const zone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-                    if (zone) data.yesterday[device].forEach(item => addChip(zone, item.name, item.group, item.status || 'normal', true));
+                    if (zone) {
+                        data.yesterday[device].forEach(item => {
+                            const uid = item.uid || ('hist_' + Math.random().toString(36).substr(2, 9));
+                            addChip(zone, item.name, item.group, item.status || 'normal', true, uid, null);
+                        });
+                    }
                 });
             }
             updateStats();
@@ -732,6 +755,7 @@
             adWatched: adWatchedData,
             coins: coinData,
             fishing_cd_v2: fishingCdData,
+            yesterdayCompleteTimes: yesterdayCompleteTimes,
             today: {},
             yesterday: {}
         };
@@ -740,9 +764,11 @@
             const chips = [];
             zone.querySelectorAll('.quest-chip').forEach(chip => {
                 chips.push({ 
+                    uid: chip.dataset.uid, 
                     name: chip.dataset.name, 
                     group: chip.dataset.group, 
                     status: chip.dataset.status || 'normal',
+                    completedAt: chip.dataset.completedAt || '',
                     completed: chip.classList.contains('completed') 
                 });
             });
@@ -753,6 +779,7 @@
             const chips = [];
             zone.querySelectorAll('.quest-chip').forEach(chip => {
                 chips.push({ 
+                    uid: chip.dataset.uid, 
                     name: chip.dataset.name, 
                     group: chip.dataset.group, 
                     status: chip.dataset.status || 'normal',
@@ -820,8 +847,6 @@
             accounts.forEach(acc => {
                 const key = String(acc);
                 const cdEnd = fishingCdData[key] || 0;
-                
-                // 💡 計算顯示用的剩餘時間（將底層 1 小時冷卻時間提前扣除 45 分鐘，看起來就會是 15 分鐘倒數）
                 const adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
                 const isCd = now < adjustedCdEnd;
                 
@@ -840,7 +865,6 @@
                 btn.innerHTML = htmlContent;
 
                 btn.onclick = () => {
-                    // 點擊時以 1 小時作為底層冷卻時間寫入雲端
                     fishingCdData[key] = Date.now() + FISHING_CD_DURATION;
                     gameRef.update({ fishing_cd_v2: fishingCdData });
                 };
@@ -921,8 +945,6 @@
                 else selectedGroupNames.delete(groupName);
                 updateDropdownBtnText();
                 renderQueuesBySelection();
-                
-                // 💡 勾選或取消佇列選單時，自動收合下拉選單
                 document.getElementById('dropdownMenu').classList.remove('show');
             };
             label.appendChild(checkbox);
@@ -966,7 +988,14 @@
                 accountGroups[groupName].forEach(acc => {
                     const btn = document.createElement('button');
                     btn.className = 'queue-btn';
-                    btn.innerText = acc;
+                    
+                    let yestTimeText = yesterdayCompleteTimes[acc] || '';
+                    if (yestTimeText) {
+                        btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">${yestTimeText}</span>`;
+                    } else {
+                        btn.innerText = acc;
+                    }
+
                     btn.dataset.name = acc;
                     btn.dataset.group = groupName;
                     btn.onclick = () => {
@@ -975,7 +1004,8 @@
                         const existingDevice = checkAccountAddedToday(acc);
                         if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
                         
-                        addChip(targetZone, acc, groupName, 'normal', false);
+                        const newUid = 'chip_' + Math.random().toString(36).substr(2, 9);
+                        addChip(targetZone, acc, groupName, 'normal', false, newUid, null);
                         saveDataToCloud();
                         updateStats();
                         updatePendingOverview();
@@ -1071,22 +1101,24 @@
         zone.classList.add('active');
     }
 
-    function addChip(zone, accName, groupName, status = 'normal', isHistory = false) {
+    function addChip(zone, accName, groupName, status = 'normal', isHistory = false, uid = '', completedAt = null) {
         const chip = document.createElement('div');
+        chip.dataset.uid = uid;
         chip.dataset.name = accName;
         chip.dataset.group = groupName;
         chip.dataset.status = status;
+        if (completedAt) chip.dataset.completedAt = completedAt;
 
         updateChipAppearance(chip, status, accName, isHistory, false, groupName);
 
         if (!isHistory) {
-            setupChipInteractions(chip, accName, groupName);
+            setupChipInteractions(chip, accName, groupName, uid);
         }
 
         zone.appendChild(chip);
     }
 
-    function setupChipInteractions(chip, accName, groupName, isOverview = false) {
+    function setupChipInteractions(chip, accName, groupName, uid) {
         let pressTimer = null;
         let isLongPress = false;
 
@@ -1096,7 +1128,7 @@
                 isLongPress = true;
                 let currentStatus = chip.dataset.status;
                 let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
-                toggleChipStatus(chip, accName, groupName, newStatus);
+                toggleChipStatus(uid, accName, groupName, newStatus);
             }, 600);
         });
 
@@ -1109,7 +1141,7 @@
                 isLongPress = true;
                 let currentStatus = chip.dataset.status;
                 let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
-                toggleChipStatus(chip, accName, groupName, newStatus);
+                toggleChipStatus(uid, accName, groupName, newStatus);
             }, 600);
         });
 
@@ -1122,16 +1154,29 @@
             let currentStatus = chip.dataset.status;
             let newStatus = (currentStatus === 'completed') ? 'normal' : 'completed';
             
+            let timeStr = '';
+            if (newStatus === 'completed') {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                timeStr = `${hh}:${mm}`;
+            }
+
             if (newStatus === 'completed' && groupName && accountGroups[groupName]) {
                 rotateAccountToTail(groupName, accName);
             }
-            toggleChipStatus(chip, accName, groupName, newStatus);
+            toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
         });
     }
 
-    function toggleChipStatus(targetChip, accName, groupName, newStatus) {
-        document.querySelectorAll(`.quest-chip[data-name="${accName}"][data-group="${groupName}"]`).forEach(c => {
+    function toggleChipStatus(uid, accName, groupName, newStatus, timeStr = null) {
+        document.querySelectorAll(`.quest-chip[data-uid="${uid}"]`).forEach(c => {
             c.dataset.status = newStatus;
+            if (timeStr !== null) {
+                c.dataset.completedAt = timeStr;
+            } else if (newStatus === 'normal') {
+                c.removeAttribute('data-completedAt');
+            }
             let isOverview = c.closest('#pendingOverviewBox') !== null;
             updateChipAppearance(c, newStatus, accName, false, isOverview, groupName);
         });
@@ -1165,8 +1210,8 @@
             removeBtn.setAttribute('data-bound', 'true');
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const targetGroup = chip.dataset.group || groupName;
-                document.querySelectorAll(`.today-zone .quest-chip[data-name="${accName}"][data-group="${targetGroup}"]`).forEach(c => c.remove());
+                const targetUid = chip.dataset.uid;
+                document.querySelectorAll(`.today-zone .quest-chip[data-uid="${targetUid}"]`).forEach(c => c.remove());
                 saveDataToCloud();
                 updateStats();
                 updatePendingOverview();
@@ -1185,14 +1230,17 @@
             if (status !== 'completed') {
                 const device = chip.closest('.drop-zone').dataset.device;
                 pendingChips.push({
+                    uid: chip.dataset.uid,
                     name: chip.dataset.name,
                     group: chip.dataset.group,
                     status: status,
+                    completedAt: chip.dataset.completedAt || '',
                     device: device
                 });
             }
         });
 
+        // 💡 讓未完成總覽的標題完美同步目前開新一天的日期變數
         const titleText = document.getElementById('overviewTitleText');
         titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
 
@@ -1203,13 +1251,15 @@
 
         pendingChips.forEach(item => {
             const chip = document.createElement('div');
+            chip.dataset.uid = item.uid;
             chip.dataset.name = item.name;
             chip.dataset.group = item.group;
             chip.dataset.status = item.status;
+            if (item.completedAt) chip.dataset.completedAt = item.completedAt;
             chip.dataset.device = item.device;
 
             updateChipAppearance(chip, item.status, item.name, false, true, item.group);
-            setupChipInteractions(chip, item.name, item.group, true);
+            setupChipInteractions(chip, item.name, item.group, item.uid);
             box.appendChild(chip);
         });
     }
@@ -1239,8 +1289,15 @@
 
     function shiftToNextDay() {
         const nextDayStr = getFormattedDate(new Date());
-        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動為所有今天有看過廣告的帳號 R 幣數量 +1！`)) {
+        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動收集今天各帳號完成的時間，供明天佇列顯示參考！`)) {
             
+            yesterdayCompleteTimes = {};
+            document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+                if (chip.dataset.status === 'completed' && chip.dataset.completedAt) {
+                    yesterdayCompleteTimes[chip.dataset.name] = chip.dataset.completedAt;
+                }
+            });
+
             if (adWatchedData && coinData) {
                 Object.keys(adWatchedData).forEach(accName => {
                     if (adWatchedData[accName] === true) {
@@ -1255,14 +1312,15 @@
                 const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
                 yestZone.innerHTML = '';
                 todayZone.querySelectorAll('.quest-chip').forEach(chip => {
-                    addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true);
+                    const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
+                    addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
                 });
                 todayZone.innerHTML = '';
             });
             todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
             activeDateStr = nextDayStr; 
             adWatchedData = {}; 
-            selectedGroupNames = new Set(['R少']); // 新的一天自動打開 R 少佇列
+            selectedGroupNames = new Set(['R少']);
             saveDataToCloud();
             renderDropdownMenu();
             renderQueuesBySelection();
@@ -1271,7 +1329,7 @@
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
-            alert(`🎉 已成功移交至新的一天（${activeDateStr}）！\n✨ 有看廣告的帳號 R 幣已自動 +1 並同步至後台資料庫！`);
+            alert(`🎉 已成功移交至新的一天（${activeDateStr}）！\n✨ 昨天各帳號的完成時間已成功記錄至佇列中！`);
         }
     }
 
@@ -1283,7 +1341,7 @@
                 accountGroups = JSON.parse(JSON.stringify(todayInitialGroups));
             }
 
-            selectedGroupNames = new Set(['R少']); // 重設今日資料時也自動打開 R 少佇列
+            selectedGroupNames = new Set(['R少']);
             renderDropdownMenu();
             renderQueuesBySelection();
             saveDataToCloud();
