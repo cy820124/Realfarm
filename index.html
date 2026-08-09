@@ -297,10 +297,10 @@
 
         .queue-btn {
             flex: 0 0 auto;
-            padding: 8px 14px;
+            padding: 6px 12px;
             background: #edf2f7;
             border: 1px solid #cbd5e0;
-            border-radius: 18px;
+            border-radius: 16px;
             font-size: 13px;
             font-weight: bold;
             color: #2d3748;
@@ -309,16 +309,14 @@
             -webkit-appearance: none;
             touch-action: manipulation;
             display: inline-flex;
-            flex-direction: column;
             align-items: center;
-            line-height: 1.2;
+            gap: 4px;
         }
 
         .queue-btn .yest-time-sub {
-            font-size: 10px;
+            font-size: 11px;
             color: #718096;
             font-weight: normal;
-            margin-top: 1px;
         }
 
         .queue-btn.assigned {
@@ -528,7 +526,7 @@
             margin-top: 1px;
         }
 
-        /* 🎣 Modal 底部下次釣魚時間專用卡片樣式 (已放大字體與區塊) */
+        /* 🎣 Modal 底部下次釣魚時間專用卡片樣式 */
         .modal-timer-card {
             background: #f0fff4;
             border: 2px solid #9ae6b4;
@@ -663,7 +661,7 @@
             <div>
                 <div id="fishModalContentContainer"></div>
             </div>
-            <!-- 🎣 Modal 底部的下次釣魚時間專用語法 (已放大尺寸與文字) -->
+            <!-- 🎣 Modal 底部的下次釣魚時間專用語法 -->
             <div class="modal-timer-card" id="modalTimerCard">
                 <div class="modal-timer-title" id="modalTimerTitle">🎣 目前推算下次釣魚</div>
                 <div id="modalFishingTimerDisplay">載入中...</div>
@@ -823,7 +821,6 @@
         });
     }
 
-    // 🎣 釣魚中自動調整底部 Modal 顯示狀態
     function updateModalFishingTimerOnly() {
         if (!cloudDataGlobal || !cloudDataGlobal.nextFishingTime) return;
 
@@ -850,13 +847,11 @@
         const displayEl = document.getElementById('modalFishingTimerDisplay');
         if (!displayEl) return;
 
-        // 判斷是否正在釣魚中
         if (now >= nextTime && now <= endTime) {
             const remainMs = endTime - now;
             const remainTotalSecs = Math.ceil(remainMs / 1000);
             const remainColon = formatTimerColon(remainTotalSecs);
 
-            // 釣魚中：改變卡片樣式並顯示目前正在釣魚中與剩餘時間
             timerCard.className = 'modal-timer-card fishing-now';
             timerTitle.innerText = '🎣 目前狀態';
             displayEl.style.color = "#2b6cb0";
@@ -864,7 +859,6 @@
             return;
         }
 
-        // 非釣魚中（冷卻倒數）：恢復「目前推算下次釣魚」的顯示
         timerCard.className = 'modal-timer-card';
         timerTitle.innerText = '🎣 目前推算下次釣魚';
 
@@ -1222,7 +1216,8 @@
                     
                     let yestTimeText = yesterdayCompleteTimes[acc] || '';
                     if (yestTimeText) {
-                        btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">${yestTimeText}</span>`;
+                        // 💡 改為右側並排並加上括號
+                        btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${yestTimeText})</span>`;
                     } else {
                         btn.innerText = acc;
                     }
@@ -1551,7 +1546,9 @@
             activeDateStr = nextDayStr; 
             adWatchedData = {}; 
             selectedGroupNames = new Set(['R少']);
+            
             saveDataToCloud();
+            
             renderDropdownMenu();
             renderQueuesBySelection();
             renderAdPanel();
