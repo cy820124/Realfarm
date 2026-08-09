@@ -97,12 +97,49 @@
         }
         .coin-input:focus { border-color: #3182ce; background: #fff; outline: none; border-radius: 4px; }
         .back-link { display: block; text-align: center; margin-bottom: 15px; color: #3182ce; text-decoration: none; font-weight: bold; }
+        
+        /* 釣魚計時器專用樣式 (獨立局部更新區塊) */
+        .timer-card { background: #ebf8ff; border: 1px solid #bee3f8; }
+        #fishingTimerDisplay { font-size: 15px; font-weight: bold; text-align: center; padding: 6px; color: #2b6cb0; }
     </style>
 </head>
 <body>
 
 <a href="index.html" class="back-link">⬅️ 返回遊戲主畫面</a>
 <h1>⚙️ 後台管理中心</h1>
+
+<!-- 🎣 釣魚時間與週期維護（置頂局部更新區） -->
+<div class="card timer-card">
+    <h2>
+        <span>🎣 目前推算下次釣魚</span>
+        <button class="secondary" onclick="toggleFishingEditMode()" id="fishingEditBtn" style="width: auto; padding: 4px 10px; font-size: 11px;">🔓 開啟維護</button>
+    </h2>
+    
+    <div style="margin-top: 5px; padding: 6px; text-align: center;">
+        <span id="fishingTimerDisplay">載入中...</span>
+    </div>
+
+    <!-- 釣魚編輯面板 (預設隱藏) -->
+    <div id="fishingEditPanel" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #bee3f8;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; width: 90px; font-weight: bold;">下次時間：</span>
+                <input type="datetime-local" id="fishingTimeInput" style="flex: 1;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; width: 90px; font-weight: bold;">循環週期：</span>
+                <input type="number" id="fishingIntervalInput" placeholder="分鐘" style="width: 80px;">
+                <span style="font-size: 13px;">分鐘</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; width: 90px; font-weight: bold;">釣魚持續：</span>
+                <input type="number" id="fishingDurationInput" placeholder="分鐘" style="width: 80px;">
+                <span style="font-size: 13px;">分鐘 (釣魚中時長)</span>
+                <button onclick="saveFishingSettings()" class="success" style="flex: 1;">儲存設定</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div style="margin-bottom: 15px;">
     <button class="secondary" onclick="toggleEditMode()" id="editModeBtnTop">🔓 開啟新增/刪除與匯入匯出模式</button>
@@ -185,10 +222,13 @@
 
     let cloudData = null;
     let showEditMode = false; 
+    let showFishingEdit = false;
     let currentSortField = 'name';  
     let sortAscending = true;     
     let deviceSortableInstance = null;
+    let isInitialized = false;
 
+    // 1. 初始化監聽：只在剛進網頁時完整渲染一次表格，之後完全不因雲端更新而打斷畫面
     document.addEventListener('DOMContentLoaded', () => {
         gameRef.on('value', (snapshot) => {
             cloudData = snapshot.val();
@@ -202,9 +242,148 @@
             if (!cloudData.coins) cloudData.coins = {};
             if (!cloudData.groups['IOS']) cloudData.groups['IOS'] = [];
 
-            renderAdminUI();
+            if (!cloudData.nextFishingTime) {
+                cloudData.nextFishingTime = new Date().toISOString();
+            }
+            if (!cloudData.fishingInterval) {
+                cloudData.fishingInterval = 365;
+            }
+            if (!cloudData.fishingDuration) {
+                cloudData.fishingDuration = 61;
+            }
+
+            if (!isInitialized) {
+                syncFishingInputsToDOM();
+                renderAdminUI();
+                isInitialized = true;
+            }
         });
     });
+
+    // 2. 獨立計時器：每秒只透過 JS 更新計時 Span 的文字，絕不重建表格或碰輸入框
+    setInterval(() => {
+        if (cloudData && cloudData.nextFishingTime) {
+            updateFishingTimerOnly();
+        }
+    }, 1000);
+
+    // 🎣 釣魚時間維護面板開關
+    function toggleFishingEditMode() {
+        showFishingEdit = !showFishingEdit;
+        const panel = document.getElementById('fishingEditPanel');
+        const btn = document.getElementById('fishingEditBtn');
+        
+        panel.style.display = showFishingEdit ? 'block' : 'none';
+        btn.innerText = showFishingEdit ? '🔒 關閉維護' : '🔓 開啟維護';
+        btn.style.background = showFishingEdit ? '#e53e3e' : '#718096';
+
+        if (showFishingEdit) {
+            syncFishingInputsToDOM();
+        }
+    }
+
+    function syncFishingInputsToDOM() {
+        if (!cloudData) return;
+        const intervalMinutes = Number(cloudData.fishingInterval) || 365;
+        const durationMinutes = Number(cloudData.fishingDuration) || 61;
+        let nextTime = new Date(cloudData.nextFishingTime);
+
+        const offset = nextTime.getTimezoneOffset() * 60000;
+        document.getElementById('fishingTimeInput').value = (new Date(nextTime - offset)).toISOString().slice(0, 16);
+        document.getElementById('fishingIntervalInput').value = intervalMinutes;
+        document.getElementById('fishingDurationInput').value = durationMinutes;
+    }
+
+    function formatTimeColon(totalSecs) {
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+
+        if (h > 0) {
+            const hh = String(h).padStart(2, '0');
+            return `${hh}:${mm}:${ss}`;
+        } else {
+            return `${mm}:${ss}`;
+        }
+    }
+
+    // 🎣 獨立局部更新計時器
+    function updateFishingTimerOnly() {
+        if (!cloudData || !cloudData.nextFishingTime) return;
+
+        const intervalMinutes = Number(cloudData.fishingInterval) || 365;
+        const durationMinutes = Number(cloudData.fishingDuration) || 61;
+        let nextTime = new Date(cloudData.nextFishingTime);
+        const now = new Date();
+
+        let updated = false;
+        while (new Date(nextTime.getTime() + durationMinutes * 60000) <= now) {
+            nextTime.setMinutes(nextTime.getMinutes() + intervalMinutes);
+            updated = true;
+        }
+
+        if (updated) {
+            cloudData.nextFishingTime = nextTime.toISOString();
+            saveToCloud();
+        }
+
+        const year = nextTime.getFullYear();
+        const month = String(nextTime.getMonth() + 1).padStart(2, '0');
+        const day = String(nextTime.getDate()).padStart(2, '0');
+        const hours = String(nextTime.getHours()).padStart(2, '0');
+        const minutes = String(nextTime.getMinutes()).padStart(2, '0');
+        const formattedTime = `${year}/${month}/${day} ${hours}:${minutes}`;
+
+        const diffMs = nextTime - now;
+        const durationMs = durationMinutes * 60 * 1000;
+        const displayEl = document.getElementById('fishingTimerDisplay');
+        if (!displayEl) return;
+
+        const endTime = new Date(nextTime.getTime() + durationMs);
+        if (now >= nextTime && now <= endTime) {
+            const remainMs = endTime - now;
+            const remainTotalSecs = Math.ceil(remainMs / 1000);
+            const remainColon = formatTimeColon(remainTotalSecs);
+
+            displayEl.style.color = "#38a169";
+            displayEl.innerHTML = `🎣 釣魚中 (剩餘 ${remainColon})`;
+            return;
+        }
+
+        let countdownStr = "";
+        if (diffMs > 0) {
+            const totalSecs = Math.floor(diffMs / 1000);
+            countdownStr = `(${formatTimeColon(totalSecs)})`;
+        }
+
+        if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
+            displayEl.style.color = "#e53e3e";
+            displayEl.innerHTML = `⚠️ 準備釣魚！ ${formattedTime} <span style="font-size:13px;">${countdownStr}</span>`;
+        } else {
+            displayEl.style.color = "#2b6cb0";
+            displayEl.innerHTML = `${formattedTime} <span style="font-size:13px; color:#4a5568;">${countdownStr}</span>`;
+        }
+    }
+
+    function saveFishingSettings() {
+        const timeVal = document.getElementById('fishingTimeInput').value;
+        const intervalVal = document.getElementById('fishingIntervalInput').value;
+        const durationVal = document.getElementById('fishingDurationInput').value;
+
+        if (!timeVal || !intervalVal || !durationVal) {
+            alert('請完整填寫所有釣魚設定欄位！');
+            return;
+        }
+
+        cloudData.nextFishingTime = new Date(timeVal).toISOString();
+        cloudData.fishingInterval = Number(intervalVal);
+        cloudData.fishingDuration = Number(durationVal);
+        saveToCloud();
+        alert('✅ 釣魚設定已成功更新並儲存至雲端！');
+    }
 
     function saveToCloud() {
         gameRef.set(cloudData);
