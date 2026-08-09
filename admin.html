@@ -127,16 +127,17 @@
     <div id="coinTableArea">載入中...</div>
 </div>
 
-<!-- 2. IOS 帳號管理與獨立金幣維護 -->
+<!-- 2. IOS 帳號獨立金幣維護 -->
 <div class="card">
-    <h2>🍏 IOS 帳號管理與金幣維護</h2>
+    <h2>🍏 IOS 帳號金幣維護</h2>
     <div class="input-group editable-panel" id="iosInputPanel">
         <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
         <button onclick="addIosAccount()">新增IOS帳號</button>
     </div>
-    <div class="item-list" id="iosListArea">載入中...</div>
-    
-    <div style="margin-top: 12px;" id="iosCoinTableArea">載入中...</div>
+    <div style="font-size: 12px; color: #718096; margin-bottom: 8px;">
+        💡 獨立維護所有 IOS 帳號的金幣：
+    </div>
+    <div id="iosCoinTableArea">載入中...</div>
 </div>
 
 <!-- 3. 裝置清單管理 -->
@@ -361,20 +362,7 @@
             });
         }
 
-        const iosArea = document.getElementById('iosListArea');
-        iosArea.innerHTML = '';
         const iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
-        if (iosList.length === 0) {
-            iosArea.innerHTML = '<span style="color:#a0aec0; font-size:12px;">目前沒有 IOS 帳號</span>';
-        } else {
-            iosList.forEach((acc, idx) => {
-                const badge = document.createElement('div');
-                badge.className = 'badge';
-                let deleteBtnHtml = showEditMode ? ` <span onclick="removeIos(${idx})">&times;</span>` : '';
-                badge.innerHTML = `${acc}${deleteBtnHtml}`;
-                iosArea.appendChild(badge);
-            });
-        }
 
         // 渲染獨立的 IOS 金幣維護表格
         const iosCoinArea = document.getElementById('iosCoinTableArea');
@@ -385,9 +373,9 @@
         iosCoinHtml += `</tr></thead><tbody>`;
 
         if (iosList.length === 0) {
-            iosCoinHtml += `<tr><td colspan="${showEditMode ? 3 : 2}" style="color:#a0aec0; padding:10px;">目前沒有 IOS 帳號可維護金幣</td></tr>`;
+            iosCoinHtml += `<tr><td colspan="${showEditMode ? 3 : 2}" style="color:#a0aec0; padding:10px;">目前沒有 IOS 帳號</td></tr>`;
         } else {
-            iosList.forEach((acc) => {
+            iosList.forEach((acc, idx) => {
                 let coin = (cloudData.coins && cloudData.coins[acc] !== undefined) ? cloudData.coins[acc] : '';
                 iosCoinHtml += `<tr>
                     <td><b>${acc}</b></td>
@@ -395,7 +383,7 @@
                         onfocus="this.select()" 
                         onchange="updateIosCoinDirectly('${acc}', this.value)"></td>`;
                 if (showEditMode) {
-                    iosCoinHtml += `<td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeIosByName('${acc}')">刪除</button></td>`;
+                    iosCoinHtml += `<td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeIos(${idx})">刪除</button></td>`;
                 }
                 iosCoinHtml += `</tr>`;
             });
@@ -581,20 +569,16 @@
         saveToCloud();
     }
     function removeIos(idx) {
-        cloudData.groups['IOS'].splice(idx, 1);
-        saveToCloud();
-    }
-    function removeIosByName(accName) {
-        if (!confirm(`確定要刪除 IOS 帳號 ${accName} 嗎？`)) return;
         const iosList = cloudData.groups['IOS'];
-        if (iosList) {
-            const idx = iosList.indexOf(accName);
-            if (idx > -1) iosList.splice(idx, 1);
+        if (iosList && iosList[idx]) {
+            const acc = iosList[idx];
+            if (!confirm(`確定要刪除 IOS 帳號 ${acc} 嗎？`)) return;
+            iosList.splice(idx, 1);
+            if (cloudData.coins && cloudData.coins[acc] !== undefined) {
+                delete cloudData.coins[acc];
+            }
+            saveToCloud();
         }
-        if (cloudData.coins && cloudData.coins[accName] !== undefined) {
-            delete cloudData.coins[accName];
-        }
-        saveToCloud();
     }
 
     function removeRspAcc(acc) {
