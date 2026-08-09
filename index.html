@@ -617,7 +617,11 @@
     let adWatchedData = {}; 
     let coinData = {}; 
     let fishingCdData = {}; 
-    const FISHING_CD_DURATION = 15 * 60 * 1000;
+    
+    // 💡 底層冷卻設為 1 小時 (60 * 60 * 1000 毫秒)，確保排序絕對夠長
+    const FISHING_CD_DURATION = 60 * 60 * 1000;
+    // 💡 畫面顯示時扣除 45 分鐘 (45 * 60 * 1000 毫秒)，讓倒數看起來只有 15 分鐘
+    const FISHING_CD_OFFSET = 45 * 60 * 1000;
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -672,7 +676,6 @@
                 activeDateStr = data.activeDate || todayFormatted;
                 adWatchedData = data.adWatched || {};
                 coinData = data.coins || {};
-                // 改用獨立的 fishing_cd_v2 欄位，並強制轉換成字串鍵值對應，避免數字/文字 key 衝突
                 fishingCdData = data.fishing_cd_v2 || {};
             }
 
@@ -728,7 +731,7 @@
             activeDate: activeDateStr,
             adWatched: adWatchedData,
             coins: coinData,
-            fishing_cd_v2: fishingCdData, // 使用專屬的獨立欄位儲存
+            fishing_cd_v2: fishingCdData,
             today: {},
             yesterday: {}
         };
@@ -787,7 +790,6 @@
             let accounts = [...accountGroups[groupName]];
 
             accounts.sort((a, b) => {
-                // 將帳號轉為字串作為 Key 查詢，徹底解決數字與文字 key 排序/比對衝突的問題
                 let keyA = String(a);
                 let keyB = String(b);
                 let cdA = fishingCdData[keyA] || 0;
@@ -818,8 +820,12 @@
             accounts.forEach(acc => {
                 const key = String(acc);
                 const cdEnd = fishingCdData[key] || 0;
-                const isCd = now < cdEnd;
-                let remainSec = Math.ceil((cdEnd - now) / 1000);
+                
+                // 💡 計算顯示用的剩餘時間（將底層 1 小時冷卻時間提前扣除 45 分鐘，看起來就會是 15 分鐘倒數）
+                const adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
+                const isCd = now < adjustedCdEnd;
+                
+                let remainSec = Math.ceil((adjustedCdEnd - now) / 1000);
                 let remainMin = Math.floor(remainSec / 60);
                 let remainS = remainSec % 60;
 
@@ -834,7 +840,7 @@
                 btn.innerHTML = htmlContent;
 
                 btn.onclick = () => {
-                    // 點擊後直接更新專屬的 fishing_cd_v2 欄位並寫入雲端
+                    // 點擊時以 1 小時作為底層冷卻時間寫入雲端
                     fishingCdData[key] = Date.now() + FISHING_CD_DURATION;
                     gameRef.update({ fishing_cd_v2: fishingCdData });
                 };
@@ -1211,7 +1217,7 @@
     function rotateAccountToTail(groupName, accName) {
         let list = accountGroups[groupName];
         if (!list) return;
-        const index = list.indexOf(accName);
+        let index = list.indexOf(accName);
         if (index > -1) {
             list.splice(index, 1); 
             list.push(accName);   
@@ -1220,8 +1226,8 @@
     }
 
     function updateStats() {
-        const total = document.querySelectorAll('.today-zone .quest-chip').length;
-        const comp = document.querySelectorAll('.today-zone .quest-chip.completed').length;
+        let total = document.querySelectorAll('.today-zone .quest-chip').length;
+        let comp = document.querySelectorAll('.today-zone .quest-chip.completed').length;
         
         const rateTag = document.getElementById('completionRateTag');
         if (total > 0 && comp === total) {
