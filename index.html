@@ -816,6 +816,8 @@
                 updateModalFishingTimerOnly();
             }
 
+            checkReadyFishModalTimer();
+
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
@@ -913,6 +915,18 @@
         const modal = document.getElementById('readyFishModal');
         const countdownEl = document.getElementById('readyModalCountdown');
         const modalTitle = document.getElementById('readyModalTitle');
+
+        // 💡 優先檢查：如果目前正在釣魚中（介於開始時間與結束時間之間）
+        if (now >= nextTime && now <= endTime) {
+            if (!readyModalManuallyClosed) {
+                const remainMs = endTime - now;
+                const totalSecs = Math.ceil(remainMs / 1000);
+                countdownEl.innerText = formatTimeColon(totalSecs);
+                modalTitle.innerHTML = '🎣 目前正在釣魚中！';
+                modal.classList.add('show');
+            }
+            return;
+        }
 
         if (now >= endTime || diffMs <= 0) {
             modal.classList.remove('show');
@@ -1216,7 +1230,6 @@
                     
                     let yestTimeText = yesterdayCompleteTimes[acc] || '';
                     if (yestTimeText) {
-                        // 💡 改為右側並排並加上括號
                         btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${yestTimeText})</span>`;
                     } else {
                         btn.innerText = acc;
