@@ -326,14 +326,15 @@
             opacity: 0.7;
         }
 
-        /* 🚫 無任務/略過狀態：調淡、更灰、刪除線 */
-        .queue-btn.no-quest {
+        
+                /* 🚫 無任務/略過狀態：調淡、更灰、刪除線 */
+         .queue-btn.no-quest {
             background: #f7fafc !important;
-            color: #a0aec0 !important;
+             color: #a0aec0 !important;
             border-color: #e2e8f0 !important;
-            text-decoration: line-through;
-            opacity: 0.65;
-        }
+             text-decoration: line-through;
+            opacity: 0.65;｝
+             
         .queue-btn.no-quest .yest-time-sub {
             color: #cbd5e0 !important;
         }
@@ -524,6 +525,7 @@
             justify-content: center;
             line-height: 1.1;
             min-height: 38px;
+            position: relative; /* 💡 供小標記定位用 */
         }
         .fish-btn:hover { background: #e2e8f0; }
         .fish-btn.cooldown {
@@ -536,6 +538,24 @@
             font-size: 10px;
             color: #e53e3e;
             margin-top: 1px;
+        }
+
+        /* 💡 釣魚按鈕上的小標記樣式調整 */
+        .badge-quest {
+            position: absolute;
+            top: 2px;
+            right: 3px;
+            font-size: 9px;
+            color: #e53e3e;
+            line-height: 1;
+        }
+        .badge-ad {
+            position: absolute;
+            bottom: 2px;
+            right: 3px;
+            font-size: 9px;
+            color: #d69e2e;
+            line-height: 1;
         }
 
         /* 🎣 Modal 底部下次釣魚時間專用卡片樣式 */
@@ -694,10 +714,16 @@
             <div>
                 <div id="fishModalContentContainer"></div>
             </div>
-            <!-- 🎣 Modal 底部的下次釣魚時間專用語法 -->
-            <div class="modal-timer-card" id="modalTimerCard">
-                <div class="modal-timer-title" id="modalTimerTitle">🎣 目前推算下次釣魚</div>
-                <div id="modalFishingTimerDisplay">載入中...</div>
+            <div>
+                <!-- 🎣 Modal 底部的下次釣魚時間專用語法 -->
+                <div class="modal-timer-card" id="modalTimerCard">
+                    <div class="modal-timer-title" id="modalTimerTitle">🎣 目前推算下次釣魚</div>
+                    <div id="modalFishingTimerDisplay">載入中...</div>
+                </div>
+                <!-- 💡 小標記說明移至下方 -->
+                <div style="font-size: 11px; color: #718096; margin-top: 10px; text-align: center;">
+                    💡 小標記說明：<span style="color:#d69e2e; font-weight:bold;">●</span> 尚未看廣告（右下） ｜ <span style="color:#e53e3e; font-weight:bold;">●</span> 有任務未完成（右上）
+                </div>
             </div>
         </div>
     </div>
@@ -1094,6 +1120,14 @@
 
         if (!accountGroups) return;
 
+        const pendingOrInProgressSet = new Set();
+        document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+            const status = chip.dataset.status || 'normal';
+            if (status !== 'completed') {
+                pendingOrInProgressSet.add(chip.dataset.name);
+            }
+        });
+
         let groupOrder = ['R少', 'R中', 'R多', 'IOS'];
         let allGroups = Object.keys(accountGroups);
         let sortedGroups = groupOrder.filter(g => allGroups.includes(g));
@@ -1145,7 +1179,16 @@
                 const btn = document.createElement('button');
                 btn.className = `fish-btn ${isCd ? 'cooldown' : ''}`;
                 
-                let htmlContent = `<span>${acc}</span>`;
+                const isAdWatched = !!adWatchedData[acc];
+                const hasPendingQuest = pendingOrInProgressSet.has(acc);
+
+                let badgeHtml = '';
+                if (!isAdWatched || hasPendingQuest) {
+                    if (hasPendingQuest) badgeHtml += `<span class="badge-quest" title="有任務未完成">●</span>`;
+                    if (!isAdWatched) badgeHtml += `<span class="badge-ad" title="尚未看廣告">●</span>`;
+                }
+
+                let htmlContent = `${badgeHtml}<span>${acc}</span>`;
                 if (isCd && remainSec > 0) {
                     let timeStr = remainMin > 0 ? `${remainMin}分` : `${remainS}秒`;
                     htmlContent += `<span class="cd-text">${timeStr}</span>`;
@@ -1291,8 +1334,13 @@
                     btn.dataset.name = acc;
                     btn.dataset.group = groupName;
 
-                    // 💡 點擊：分派帳號到表格
+                    // 💡 點擊：分派帳號到表格（已加上檢查是否標記無任務）
                     btn.onclick = () => {
+                        if (noQuestAccounts[acc]) {
+                            alert(`⚠️ 角色【${acc}】今天已標記為無任務，無法指派！`);
+                            return;
+                        }
+
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
                         if (!targetZone) { alert('請先點擊下方表格選取【當前任務紀錄】對應裝置的格子！'); return; }
                         const existingDevice = checkAccountAddedToday(acc);
