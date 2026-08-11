@@ -326,13 +326,14 @@
             opacity: 0.7;
         }
 
-        /* 🚫 無任務/略過狀態：調淡、更灰、刪除線 */
+        /* 🚫 無任務/略過狀態：調淡、更灰、刪除線、禁止點擊分派 */
         .queue-btn.no-quest {
             background: #f7fafc !important;
             color: #a0aec0 !important;
             border-color: #e2e8f0 !important;
             text-decoration: line-through;
             opacity: 0.65;
+            cursor: not-allowed !important;
         }
         .queue-btn.no-quest .yest-time-sub {
             color: #cbd5e0 !important;
@@ -524,7 +525,7 @@
             justify-content: center;
             line-height: 1.1;
             min-height: 38px;
-            position: relative; /* 💡 供小標記定位用 */
+            position: relative;
         }
         .fish-btn:hover { background: #e2e8f0; }
         .fish-btn.cooldown {
@@ -539,7 +540,6 @@
             margin-top: 1px;
         }
 
-        /* 💡 釣魚按鈕上的小標記樣式 (當前任務未完成在右上角、未看廣告在右下角) */
         .fish-badges {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -562,7 +562,6 @@
             line-height: 1;
         }       
 
-        /* 🎣 Modal 底部下次釣魚時間專用卡片樣式 */
         .modal-timer-card {
             background: #f0fff4;
             border: 2px solid #9ae6b4;
@@ -596,7 +595,6 @@
             color: #2b6cb0;
         }
 
-        /* ⚠️ 準備釣魚提醒專屬 Modal 樣式 */
         .ready-fish-modal-overlay {
             display: none;
             position: fixed;
@@ -617,7 +615,6 @@
             animation: modalPopup 0.2s ease-in-out;
         }
 
-        /* 📝 自訂新紀錄名稱專屬 Modal 樣式 */
         .name-modal-overlay {
             display: none;
             position: fixed;
@@ -724,7 +721,7 @@
                     <div class="modal-timer-title" id="modalTimerTitle">🎣 目前推算下次釣魚</div>
                     <div id="modalFishingTimerDisplay">載入中...</div>
                 </div>
-                <!-- 💡 小標記說明移至計時器框框的下方 -->
+                <!-- 💡 小標記說明 -->
                 <div style="font-size: 11px; color: #718096; margin-top: 8px; text-align: center; background: #f7fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                     💡 小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角） ｜ <span style="color:#d69e2e; font-weight:bold;">●</span> 尚未看廣告（右下角）
                 </div>
@@ -1124,7 +1121,6 @@
 
         if (!accountGroups) return;
 
-        // 💡 建立今日任務中「尚未完成」或「進行中」的角色對照表
         const pendingOrInProgressSet = new Set();
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
             const status = chip.dataset.status || 'normal';
@@ -1184,7 +1180,6 @@
                 const btn = document.createElement('button');
                 btn.className = `fish-btn ${isCd ? 'cooldown' : ''}`;
                 
-                // 💡 檢查狀態標記
                 const isAdWatched = !!adWatchedData[acc];
                 const hasPendingQuest = pendingOrInProgressSet.has(acc);
 
@@ -1342,8 +1337,9 @@
                     btn.dataset.name = acc;
                     btn.dataset.group = groupName;
 
-                    // 💡 點擊：分派帳號到表格
+                    // 💡 點擊：分派帳號到表格 (已標記無任務的帳號無法點擊分派)
                     btn.onclick = () => {
+                        if (noQuestAccounts[acc]) return; // 略過無任務角色
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
                         if (!targetZone) { alert('請先點擊下方表格選取【當前任務紀錄】對應裝置的格子！'); return; }
                         const existingDevice = checkAccountAddedToday(acc);
