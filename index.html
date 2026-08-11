@@ -326,6 +326,18 @@
             opacity: 0.7;
         }
 
+        /* 🚫 無任務/略過狀態：極致黯淡（超深灰背景、極淡字體、刪除線） */
+        .queue-btn.no-quest {
+            background: #e2e8f0 !important;
+            color: #a0aec0 !important;
+            border-color: #cbd5e0 !important;
+            text-decoration: line-through;
+            opacity: 0.45;
+        }
+        .queue-btn.no-quest .yest-time-sub {
+            color: #cbd5e0 !important;
+        }
+
         .table-container {
             overflow-x: auto;
             background: var(--card-bg);
@@ -581,7 +593,7 @@
             animation: modalPopup 0.2s ease-in-out;
         }
 
-        /* 📝 自訂結算命名專屬 Modal 樣式 */
+        /* 📝 自訂新紀錄名稱專屬 Modal 樣式 */
         .name-modal-overlay {
             display: none;
             position: fixed;
@@ -617,7 +629,7 @@
 <h1>🎮 Realfarm R幣任務紀錄</h1>
 
 <div class="hint-bar">
-    <span>👉 點擊：完成打勾 | 長按：標記進行中(一半) | ✖：移除</span>
+    <span>👉 點擊：分派至表格 | 長按佇列按鈕：標記無任務/略過</span>
     <span class="sync-status" id="syncStatus">☁️ 雲端連線中</span>
 </div>
 
@@ -740,6 +752,7 @@
     let coinData = {}; 
     let fishingCdData = {}; 
     let yesterdayCompleteTimes = {}; 
+    let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
     
     let hasAlerted5Min = false;
@@ -798,6 +811,7 @@
                 coinData = {};
                 fishingCdData = {};
                 yesterdayCompleteTimes = {};
+                noQuestAccounts = {};
                 saveDataToCloud();
             } else {
                 accountGroups = data.groups || DEFAULT_GROUPS;
@@ -808,6 +822,7 @@
                 coinData = data.coins || {};
                 fishingCdData = data.fishing_cd_v2 || {};
                 yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
+                noQuestAccounts = data.noQuestAccounts || {};
             }
 
             initTable();
@@ -1027,6 +1042,7 @@
             coins: coinData,
             fishing_cd_v2: fishingCdData,
             yesterdayCompleteTimes: yesterdayCompleteTimes,
+            noQuestAccounts: noQuestAccounts,
             today: {},
             yesterday: {}
         };
@@ -1261,6 +1277,10 @@
                     const btn = document.createElement('button');
                     btn.className = 'queue-btn';
                     
+                    if (noQuestAccounts[acc]) {
+                        btn.classList.add('no-quest');
+                    }
+
                     let yestTimeText = yesterdayCompleteTimes[acc] || '';
                     if (yestTimeText) {
                         btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${yestTimeText})</span>`;
@@ -1270,6 +1290,8 @@
 
                     btn.dataset.name = acc;
                     btn.dataset.group = groupName;
+
+                    // 💡 點擊：分派帳號到表格
                     btn.onclick = () => {
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
                         if (!targetZone) { alert('請先點擊下方表格選取【當前任務紀錄】對應裝置的格子！'); return; }
@@ -1283,6 +1305,23 @@
                         updatePendingOverview();
                         updateQueueAssignedStatus();
                     };
+
+                    // 💡 長按或右鍵：切換「無任務/略過」狀態
+                    let pressTimer = null;
+                    btn.addEventListener('touchstart', (e) => {
+                        pressTimer = setTimeout(() => {
+                            e.preventDefault();
+                            toggleNoQuestStatus(acc);
+                        }, 600);
+                    });
+                    btn.addEventListener('touchend', () => clearTimeout(pressTimer));
+                    btn.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+                    btn.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        toggleNoQuestStatus(acc);
+                    });
+
                     queueBox.appendChild(btn);
                 });
             }
@@ -1300,6 +1339,16 @@
             sortableInstances.push(sortable);
         });
         updateQueueAssignedStatus();
+    }
+
+    function toggleNoQuestStatus(accName) {
+        if (noQuestAccounts[accName]) {
+            delete noQuestAccounts[accName];
+        } else {
+            noQuestAccounts[accName] = true;
+        }
+        saveDataToCloud();
+        renderQueuesBySelection();
     }
 
     function updateQueueAssignedStatus() {
@@ -1610,6 +1659,7 @@
         todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
         activeDateStr = nextDayStr; 
         adWatchedData = {}; 
+        noQuestAccounts = {}; 
         selectedGroupNames = new Set(['R少']);
         
         saveDataToCloud();
@@ -1632,6 +1682,7 @@
                 accountGroups = JSON.parse(JSON.stringify(todayInitialGroups));
             }
 
+            noQuestAccounts = {};
             selectedGroupNames = new Set(['R少']);
             renderDropdownMenu();
             renderQueuesBySelection();
