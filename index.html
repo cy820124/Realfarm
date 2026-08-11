@@ -580,6 +580,27 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             animation: modalPopup 0.2s ease-in-out;
         }
+
+        /* 📝 自訂結算命名專屬 Modal 樣式 */
+        .name-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2500;
+            justify-content: center;
+            align-items: center;
+        }
+        .name-modal-overlay.show { display: flex; }
+        .name-modal-card {
+            background: #ffffff;
+            padding: 22px 20px;
+            border-radius: 12px;
+            width: 280px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            animation: modalPopup 0.2s ease-in-out;
+        }
         @keyframes modalPopup {
             0% { transform: scale(0.9); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
@@ -639,8 +660,8 @@
         <thead>
             <tr>
                 <th class="col-device">裝置</th>
-                <th class="col-today" id="todayHeaderTitle">今日任務 (可編輯)</th>
-                <th class="col-history history-col">昨日任務</th>
+                <th class="col-today" id="todayHeaderTitle">當前任務紀錄 (可編輯)</th>
+                <th class="col-history history-col">上一次紀錄</th>
             </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -649,8 +670,8 @@
 
 <!-- 💡 結算與重設按鈕區塊 -->
 <div class="bottom-actions-container">
-    <button class="btn btn-next-day" onclick="shiftToNextDay()">🌅 結算昨日 ➔ 開始新的一天</button>
-    <button class="btn-reset-today" onclick="resetTodayData()">↺ 重設今日資料與佇列順序</button>
+    <button class="btn btn-next-day" onclick="promptNextDayName()">🌅 結算並建立新紀錄</button>
+    <button class="btn-reset-today" onclick="resetTodayData()">↺ 重設當前資料與佇列順序</button>
 </div>
 
 <!-- 🎣 釣魚冷卻追蹤滿版 Modal 視窗 -->
@@ -677,6 +698,19 @@
         <p style="font-size: 13px; color: #4a5568; margin: 10px 0;">距離下次釣魚還有：</p>
         <div id="readyModalCountdown" style="font-size: 26px; font-weight: bold; color: #2b6cb0; margin-bottom: 20px;">00:00</div>
         <button onclick="closeReadyFishModal()" style="background: #718096; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">我知道了 (隱藏視窗)</button>
+    </div>
+</div>
+
+<!-- 📝 自訂新紀錄名稱專屬 Modal 視窗 -->
+<div class="name-modal-overlay" id="nameModalOverlay">
+    <div class="name-modal-card">
+        <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">🌅 設定新紀錄名稱</h3>
+        <p style="font-size: 12px; color: #718096; margin: 8px 0;">請輸入或修改新紀錄的名稱：</p>
+        <input type="text" id="nextDayInputName" style="width: 100%; padding: 8px 10px; font-size: 15px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; text-align: center; margin-bottom: 15px; outline: none;">
+        <div style="display: flex; gap: 8px;">
+            <button onclick="closeNameModal()" style="flex: 1; background: #edf2f7; color: #4a5568; border: 1px solid #cbd5e0; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">取消</button>
+            <button onclick="confirmShiftToNextDay()" style="flex: 1; background: #3182ce; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">確定結算</button>
+        </div>
     </div>
 </div>
 
@@ -916,7 +950,6 @@
         const countdownEl = document.getElementById('readyModalCountdown');
         const modalTitle = document.getElementById('readyModalTitle');
 
-        // 💡 優先檢查：如果目前正在釣魚中（介於開始時間與結束時間之間）
         if (now >= nextTime && now <= endTime) {
             if (!readyModalManuallyClosed) {
                 const remainMs = endTime - now;
@@ -980,7 +1013,7 @@
     }
 
     function updateDateLabels() {
-        document.getElementById('todayHeaderTitle').innerText = `今日任務 (${activeDateStr}) (可編輯)`;
+        document.getElementById('todayHeaderTitle').innerText = `當前任務紀錄 (${activeDateStr}) (可編輯)`;
     }
 
     function saveDataToCloud() {
@@ -1239,7 +1272,7 @@
                     btn.dataset.group = groupName;
                     btn.onclick = () => {
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
-                        if (!targetZone) { alert('請先點擊下方表格選取【今日任務】對應裝置的格子！'); return; }
+                        if (!targetZone) { alert('請先點擊下方表格選取【當前任務紀錄】對應裝置的格子！'); return; }
                         const existingDevice = checkAccountAddedToday(acc);
                         if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
                         
@@ -1525,56 +1558,74 @@
         }
     }
 
-    function shiftToNextDay() {
-        const nextDayStr = getFormattedDate(new Date());
-        if (confirm(`確定要將今天的紀錄推移至「昨日紀錄」，並開始新的一天（${nextDayStr}）嗎？\n💡 同時將自動收集今天各帳號完成的時間，供明天佇列顯示參考！`)) {
-            
-            yesterdayCompleteTimes = {};
-            document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
-                if (chip.dataset.status === 'completed' && chip.dataset.completedAt) {
-                    yesterdayCompleteTimes[chip.dataset.name] = chip.dataset.completedAt;
+    function promptNextDayName() {
+        const defaultDateStr = getFormattedDate(new Date());
+        const inputField = document.getElementById('nextDayInputName');
+        inputField.value = defaultDateStr;
+        document.getElementById('nameModalOverlay').classList.add('show');
+        setTimeout(() => {
+            inputField.focus();
+            inputField.select();
+        }, 100);
+    }
+
+    function closeNameModal() {
+        document.getElementById('nameModalOverlay').classList.remove('show');
+    }
+
+    function confirmShiftToNextDay() {
+        const inputField = document.getElementById('nextDayInputName');
+        const defaultDateStr = getFormattedDate(new Date());
+        let inputName = inputField.value.trim();
+        const nextDayStr = inputName !== "" ? inputName : defaultDateStr;
+
+        document.getElementById('nameModalOverlay').classList.remove('show');
+
+        yesterdayCompleteTimes = {};
+        document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+            if (chip.dataset.status === 'completed' && chip.dataset.completedAt) {
+                yesterdayCompleteTimes[chip.dataset.name] = chip.dataset.completedAt;
+            }
+        });
+
+        if (adWatchedData && coinData) {
+            Object.keys(adWatchedData).forEach(accName => {
+                if (adWatchedData[accName] === true) {
+                    let currentCoin = Number(coinData[accName]) || 0;
+                    coinData[accName] = currentCoin + 1;
                 }
             });
+        }
 
-            if (adWatchedData && coinData) {
-                Object.keys(adWatchedData).forEach(accName => {
-                    if (adWatchedData[accName] === true) {
-                        let currentCoin = Number(coinData[accName]) || 0;
-                        coinData[accName] = currentCoin + 1;
-                    }
-                });
-            }
-
-            devices.forEach(device => {
-                const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
-                const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-                yestZone.innerHTML = '';
-                todayZone.querySelectorAll('.quest-chip').forEach(chip => {
-                    const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
-                    addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
-                });
-                todayZone.innerHTML = '';
+        devices.forEach(device => {
+            const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
+            const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
+            yestZone.innerHTML = '';
+            todayZone.querySelectorAll('.quest-chip').forEach(chip => {
+                const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
+                addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
             });
-            todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
-            activeDateStr = nextDayStr; 
-            adWatchedData = {}; 
-            selectedGroupNames = new Set(['R少']);
-            
-            saveDataToCloud();
-            
-            renderDropdownMenu();
-            renderQueuesBySelection();
-            renderAdPanel();
-            updateDateLabels();
-            updateStats();
-            updatePendingOverview();
-            updateQueueAssignedStatus();
-            alert(`🎉 已成功移交至新的一天（${activeDateStr}）！\n✨ 昨天各帳號的完成時間已成功記錄至佇列中！`);
-        } 
+            todayZone.innerHTML = '';
+        });
+        todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
+        activeDateStr = nextDayStr; 
+        adWatchedData = {}; 
+        selectedGroupNames = new Set(['R少']);
+        
+        saveDataToCloud();
+        
+        renderDropdownMenu();
+        renderQueuesBySelection();
+        renderAdPanel();
+        updateDateLabels();
+        updateStats();
+        updatePendingOverview();
+        updateQueueAssignedStatus();
+        alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 上一次各帳號的完成時間已成功記錄至佇列中！`);
     }
 
     function resetTodayData() {
-        if (confirm('確定要清空【今日表格】，並將【佇列順序】恢復為存檔基準的順序嗎？')) {
+        if (confirm('確定要清空【當前任務紀錄】，並將【佇列順序】恢復為存檔基準的順序嗎？')) {
             document.querySelectorAll('.today-zone').forEach(zone => { zone.innerHTML = ''; });
             
             if (todayInitialGroups) {
@@ -1588,7 +1639,7 @@
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
-            alert('已成功重置今日資料，並恢復佇列順序！');
+            alert('已成功重置當前資料，並恢復佇列順序！');
         }
     }
 </script>
