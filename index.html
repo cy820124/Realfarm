@@ -198,7 +198,6 @@
             align-items: center;
         }
 
-        /* 📌 讓選擇角色佇列區塊支援動態置頂：有勾選才 sticky，沒勾選就靜態 */
         .group-container {
             background: var(--card-bg);
             padding: 10px;
@@ -326,7 +325,6 @@
             opacity: 0.7;
         }
 
-        /* 🚫 無任務/略過狀態：調淡、更灰、刪除線、禁止點擊分派 */
         .queue-btn.no-quest {
             background: #f7fafc !important;
             color: #a0aec0 !important;
@@ -661,7 +659,7 @@
         <span id="adToggleArrow">▼ 展開</span>
     </div>
     <div class="ad-content-body" id="adContentBody">
-        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 包含所有 R 幣帳號與 iOS 帳號,點擊即可切換今日是否已看完廣告：</div>
+        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 依 R 幣帳號名稱排序，接著依 iOS 帳號名稱排序，點擊即可切換今日是否已看完廣告：</div>
         <div class="ad-grid" id="adGridArea"></div>
     </div>
 </div>
@@ -716,12 +714,10 @@
                 <div id="fishModalContentContainer"></div>
             </div>
             <div>
-                <!-- 🎣 Modal 底部的下次釣魚時間專用卡片 -->
                 <div class="modal-timer-card" id="modalTimerCard">
                     <div class="modal-timer-title" id="modalTimerTitle">🎣 目前推算下次釣魚</div>
                     <div id="modalFishingTimerDisplay">載入中...</div>
                 </div>
-                <!-- 💡 小標記說明 -->
                 <div style="font-size: 11px; color: #718096; margin-top: 8px; text-align: center; background: #f7fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                     💡 小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角） ｜ <span style="color:#d69e2e; font-weight:bold;">●</span> 尚未看廣告（右下角）
                 </div>
@@ -775,9 +771,9 @@
     let sortableInstances = [];
     let isRemoteUpdating = false;
     let activeDateStr = ''; 
-    let adWatchedData = {}; 
+    let adWatchedData = {}; // 改為 Object (Key 為角色名稱)
     let coinData = {}; 
-    let fishingCdData = {}; 
+    let fishingCdData = []; 
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -812,6 +808,48 @@
         return Object.keys(accountGroups);
     }
 
+    // 取得所有帳號並依規則排序：R幣帳號群依名稱排序 ➜ iOS 帳號依名稱排序
+    function getSortedAdAccounts() {
+        if (!accountGroups) return [];
+        
+        let rCoinAccounts = [];
+        let iosAccounts = [];
+
+        Object.keys(accountGroups).forEach(groupName => {
+            if (groupName.toUpperCase() === 'IOS') {
+                accountGroups[groupName].forEach(acc => {
+                    if (!iosAccounts.includes(acc)) iosAccounts.push(acc);
+                });
+            } else {
+                accountGroups[groupName].forEach(acc => {
+                    if (!rCoinAccounts.includes(acc)) rCoinAccounts.push(acc);
+                });
+            }
+        });
+
+        // 依照名稱排序 (支援數字與中文自然排序)
+        rCoinAccounts.sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
+        iosAccounts.sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
+
+        return [...rCoinAccounts, ...iosAccounts];
+    }
+
+    function getAllFlatAccounts() {
+        let list = [];
+        if (!accountGroups) return list;
+        let groupOrder = ['R少', 'R中', 'R多', 'IOS'];
+        let allGroups = Object.keys(accountGroups);
+        let sortedGroups = groupOrder.filter(g => allGroups.includes(g));
+        allGroups.forEach(g => { if (!sortedGroups.includes(g)) sortedGroups.push(g); });
+
+        sortedGroups.forEach(gName => {
+            accountGroups[gName].forEach(acc => {
+                list.push({ name: acc, group: gName });
+            });
+        });
+        return list;
+    }
+
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -836,7 +874,7 @@
                 selectedGroupNames = new Set(['R少']);
                 adWatchedData = {};
                 coinData = {};
-                fishingCdData = {};
+                fishingCdData = [];
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
                 saveDataToCloud();
@@ -845,9 +883,21 @@
                 todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
                 devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES;
                 activeDateStr = data.activeDate || todayFormatted;
-                adWatchedData = data.adWatched || {};
+                
+                // 相容處理：若雲端是舊陣列，轉成 Object
+                if (Array.isArray(data.adWatched)) {
+                    let converted = {};
+                    let flatList = getAllFlatAccounts();
+                    data.adWatched.forEach((val, idx) => {
+                        if (flatList[idx] && val) converted[flatList[idx].name] = true;
+                    });
+                    adWatchedData = converted;
+                } else {
+                    adWatchedData = data.adWatched || {};
+                }
+
                 coinData = data.coins || {};
-                fishingCdData = data.fishing_cd_v2 || {};
+                fishingCdData = Array.isArray(data.fishingCd) ? data.fishingCd : (Array.isArray(data.fishing_cd_v2) ? data.fishing_cd_v2 : []);
                 yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
                 noQuestAccounts = data.noQuestAccounts || {};
             }
@@ -1067,7 +1117,7 @@
             activeDate: activeDateStr,
             adWatched: adWatchedData,
             coins: coinData,
-            fishing_cd_v2: fishingCdData,
+            fishingCd: fishingCdData,
             yesterdayCompleteTimes: yesterdayCompleteTimes,
             noQuestAccounts: noQuestAccounts,
             today: {},
@@ -1135,24 +1185,21 @@
         allGroups.forEach(g => { if (!sortedGroups.includes(g)) sortedGroups.push(g); });
 
         const now = Date.now();
+        let flatList = getAllFlatAccounts();
 
         sortedGroups.forEach(groupName => {
             let accounts = [...accountGroups[groupName]];
 
             accounts.sort((a, b) => {
-                let keyA = String(a);
-                let keyB = String(b);
-                let cdA = fishingCdData[keyA] || 0;
-                let cdB = fishingCdData[keyB] || 0;
+                let idxA = flatList.findIndex(item => item.name === a);
+                let idxB = flatList.findIndex(item => item.name === b);
+                let cdA = (idxA !== -1 && fishingCdData[idxA]) ? fishingCdData[idxA] : 0;
+                let cdB = (idxB !== -1 && fishingCdData[idxB]) ? fishingCdData[idxB] : 0;
                 let isCdA = now < cdA;
                 let isCdB = now < cdB;
 
-                if (isCdA && isCdB) {
-                    return cdA - cdB;
-                }
-                if (isCdA !== isCdB) {
-                    return isCdA ? 1 : -1;
-                }
+                if (isCdA && isCdB) return cdA - cdB;
+                if (isCdA !== isCdB) return isCdA ? 1 : -1;
                 return 0;
             });
 
@@ -1168,8 +1215,8 @@
             grid.className = 'fish-grid';
 
             accounts.forEach(acc => {
-                const key = String(acc);
-                const cdEnd = fishingCdData[key] || 0;
+                let globalIdx = flatList.findIndex(item => item.name === acc);
+                const cdEnd = (globalIdx !== -1 && fishingCdData[globalIdx]) ? fishingCdData[globalIdx] : 0;
                 const adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
                 const isCd = now < adjustedCdEnd;
                 
@@ -1199,8 +1246,10 @@
                 btn.innerHTML = htmlContent;
 
                 btn.onclick = () => {
-                    fishingCdData[key] = Date.now() + FISHING_CD_DURATION;
-                    gameRef.update({ fishing_cd_v2: fishingCdData });
+                    if (globalIdx !== -1) {
+                        fishingCdData[globalIdx] = Date.now() + FISHING_CD_DURATION;
+                        gameRef.update({ fishingCd: fishingCdData });
+                    }
                 };
 
                 grid.appendChild(btn);
@@ -1226,34 +1275,19 @@
         const grid = document.getElementById('adGridArea');
         grid.innerHTML = '';
 
-        let allAccountsList = [];
-        if (accountGroups) {
-            Object.keys(accountGroups).forEach(gName => {
-                accountGroups[gName].forEach(acc => {
-                    allAccountsList.push({ name: acc, group: gName });
-                });
-            });
-        }
-
-        allAccountsList.sort((a, b) => {
-            let numA = Number(a.name);
-            let numB = Number(b.name);
-            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-            return a.name.localeCompare(b.name, 'zh-Hant');
-        });
-
+        let sortedAdAccounts = getSortedAdAccounts();
         let watchedCount = 0;
-        let totalCount = allAccountsList.length;
+        let totalCount = sortedAdAccounts.length;
 
-        allAccountsList.forEach(item => {
-            const isWatched = !!adWatchedData[item.name];
+        sortedAdAccounts.forEach(accName => {
+            const isWatched = !!adWatchedData[accName];
             if (isWatched) watchedCount++;
 
             const chip = document.createElement('div');
             chip.className = `ad-chip ${isWatched ? 'watched' : ''}`;
-            chip.innerText = item.name;
+            chip.innerText = accName;
             chip.onclick = () => {
-                adWatchedData[item.name] = !isWatched;
+                adWatchedData[accName] = !adWatchedData[accName];
                 saveDataToCloud();
                 renderAdPanel();
             };
@@ -1337,9 +1371,8 @@
                     btn.dataset.name = acc;
                     btn.dataset.group = groupName;
 
-                    // 💡 點擊：分派帳號到表格 (已標記無任務的帳號無法點擊分派)
                     btn.onclick = () => {
-                        if (noQuestAccounts[acc]) return; // 略過無任務角色
+                        if (noQuestAccounts[acc]) return; 
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
                         if (!targetZone) { alert('請先點擊下方表格選取【當前任務紀錄】對應裝置的格子！'); return; }
                         const existingDevice = checkAccountAddedToday(acc);
@@ -1353,7 +1386,6 @@
                         updateQueueAssignedStatus();
                     };
 
-                    // 💡 長按或右鍵：切換「無任務/略過」狀態
                     let pressTimer = null;
                     btn.addEventListener('touchstart', (e) => {
                         pressTimer = setTimeout(() => {
