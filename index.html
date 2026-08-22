@@ -57,15 +57,21 @@
             font-size: 13px;
         }
 
+        /* 🎣 懸浮釣魚追蹤按鈕樣式 */
         .btn-fish-modal-open {
+            position: fixed;
+            top: 12px;
+            right: 12px;
             background-color: #319795;
             color: white;
             border: none;
             padding: 6px 12px;
-            border-radius: 6px;
+            border-radius: 20px;
             font-size: 13px;
             font-weight: bold;
             cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
         .btn-fish-modal-open:hover { background-color: #2c7a7b; }
 
@@ -641,9 +647,11 @@
 </head>
 <body>
 
+<!-- 🎣 懸浮釣魚追蹤按鈕（已固定於右上角） -->
+<button class="btn-fish-modal-open" onclick="openFishModal()">🎣 釣魚冷卻追蹤</button>
+
 <div class="top-nav-bar">
     <a href="admin.html" class="admin-link">⚙️ 前往後台管理中心</a>
-    <button class="btn-fish-modal-open" onclick="openFishModal()">🎣 釣魚冷卻追蹤</button>
 </div>
 
 <h1>🎮 Realfarm R幣任務紀錄</h1>
@@ -1602,7 +1610,6 @@
             deviceTagHtml = `<span class="device-tag">${chip.dataset.device}</span>`;
         }
 
-        // 💡 只有當狀態不是「已完成」時，才顯示刪除按鈕
         let removeBtnHtml = (!isHistory && !isOverview && status !== 'completed') ? '<span class="remove-btn">&times;</span>' : '';
 
         chip.innerHTML = `${deviceTagHtml}<span>${prefix}${accName}</span>${removeBtnHtml}`;
