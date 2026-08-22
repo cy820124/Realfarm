@@ -774,7 +774,7 @@
     let activeDateStr = ''; 
     let adWatchedData = {}; 
     let coinData = {}; 
-    let fishingCdData = []; 
+    let fishingCdData = {}; // 直接純 Object 紀錄：{ 帳號名稱: 時間戳記 }
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -873,7 +873,7 @@
                 selectedGroupNames = new Set(['R少']);
                 adWatchedData = {};
                 coinData = {};
-                fishingCdData = [];
+                fishingCdData = {};
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
                 saveDataToCloud();
@@ -895,7 +895,8 @@
                 }
 
                 coinData = data.coins || {};
-                fishingCdData = Array.isArray(data.fishingCd) ? data.fishingCd : (Array.isArray(data.fishing_cd_v2) ? data.fishing_cd_v2 : []);
+                fishingCdData = data.fishingCd || {}; // 直接讀取物件
+
                 yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
                 noQuestAccounts = data.noQuestAccounts || {};
             }
@@ -1183,16 +1184,13 @@
         allGroups.forEach(g => { if (!sortedGroups.includes(g)) sortedGroups.push(g); });
 
         const now = Date.now();
-        let flatList = getAllFlatAccounts();
 
         sortedGroups.forEach(groupName => {
             let accounts = [...accountGroups[groupName]];
 
             accounts.sort((a, b) => {
-                let idxA = flatList.findIndex(item => item.name === a);
-                let idxB = flatList.findIndex(item => item.name === b);
-                let cdA = (idxA !== -1 && fishingCdData[idxA]) ? fishingCdData[idxA] : 0;
-                let cdB = (idxB !== -1 && fishingCdData[idxB]) ? fishingCdData[idxB] : 0;
+                let cdA = fishingCdData[a] || 0;
+                let cdB = fishingCdData[b] || 0;
                 let isCdA = now < cdA;
                 let isCdB = now < cdB;
 
@@ -1213,9 +1211,8 @@
             grid.className = 'fish-grid';
 
             accounts.forEach(acc => {
-                let globalIdx = flatList.findIndex(item => item.name === acc);
-                const cdEnd = (globalIdx !== -1 && fishingCdData[globalIdx]) ? fishingCdData[globalIdx] : 0;
-                const adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
+                let cdEnd = fishingCdData[acc] || 0;
+                let adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
                 const isCd = now < adjustedCdEnd;
                 
                 let remainSec = Math.ceil((adjustedCdEnd - now) / 1000);
@@ -1244,10 +1241,8 @@
                 btn.innerHTML = htmlContent;
 
                 btn.onclick = () => {
-                    if (globalIdx !== -1) {
-                        fishingCdData[globalIdx] = Date.now() + FISHING_CD_DURATION;
-                        gameRef.update({ fishingCd: fishingCdData });
-                    }
+                    fishingCdData[acc] = Date.now() + FISHING_CD_DURATION;
+                    gameRef.update({ fishingCd: fishingCdData });
                 };
 
                 grid.appendChild(btn);
@@ -1472,7 +1467,6 @@
         devices.forEach(device => {
             const tr = document.createElement('tr');
             
-            // 裝置名稱儲存格 (點擊即可自動選取該裝置的當前任務格子)
             const deviceTd = document.createElement('td');
             deviceTd.className = 'device-name col-device';
             deviceTd.innerText = device;
@@ -1482,7 +1476,6 @@
             };
             tr.appendChild(deviceTd);
 
-            // 當前任務紀錄格子
             const todayTd = document.createElement('td');
             todayTd.className = 'col-today';
             const todayZone = document.createElement('div');
@@ -1492,7 +1485,6 @@
             todayTd.appendChild(todayZone);
             tr.appendChild(todayTd);
 
-            // 上一次紀錄格子 (支援拖曳回今天)
             const yestTd = document.createElement('td');
             yestTd.className = 'history-col col-history';
             const yestZone = document.createElement('div');
@@ -1503,7 +1495,6 @@
 
             tableBody.appendChild(tr);
         });
-
     }
 
     function selectZone(zone) {
