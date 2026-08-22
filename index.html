@@ -75,6 +75,24 @@
         }
         .btn-fish-modal-open:hover { background-color: #2c7a7b; }
 
+        /* 🌈 懸浮彩虹冷卻追蹤按鈕樣式（固定於右上角釣魚按鈕下方） */
+        .btn-rainbow-modal-open {
+            position: fixed;
+            top: 48px;
+            right: 12px;
+            background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .btn-rainbow-modal-open:hover { opacity: 0.9; }
+
         .hint-bar {
             background: #2d3748;
             color: #ffffff;
@@ -108,7 +126,7 @@
         .btn-next-day { background-color: #3182ce; color: white; width: 100%; }
 
         /* 📺 可收合式廣告面版樣式 */
-        .ad-collapsible-container {
+        .collapsible-container {
             background: #ebf8ff;
             border: 1px solid #bee3f8;
             border-radius: 8px;
@@ -116,7 +134,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             overflow: hidden;
         }
-        .ad-header-bar {
+        .collapsible-header-bar {
             padding: 10px 12px;
             font-size: 13px;
             font-weight: bold;
@@ -127,14 +145,15 @@
             cursor: pointer;
             user-select: none;
         }
-        .ad-header-bar:hover { background: #e2e8f0; }
-        .ad-content-body {
+        .collapsible-header-bar:hover { background: #e2e8f0; }
+        .collapsible-content-body {
             display: none;
             padding: 10px 12px;
             border-top: 1px solid #bee3f8;
             background: #ffffff;
         }
-        .ad-content-body.show { display: block; }
+        .collapsible-content-body.show { display: block; }
+
         .ad-grid {
             display: flex;
             flex-wrap: wrap;
@@ -411,6 +430,9 @@
             border: 1px solid #cbd5e0;
             cursor: pointer;
             touch-action: manipulation;
+            width: auto;
+            min-width: 24px;
+            box-sizing: border-box;
         }
 
         .quest-chip.completed { background: #c6f6d5; color: #22543d; border-color: #9ae6b4; }
@@ -422,6 +444,7 @@
             border-radius: 10px;
             cursor: grab;
             opacity: 0.85;
+            width: auto;
         }
 
         .quest-chip .remove-btn {
@@ -497,6 +520,57 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
         .modal-floating-close:hover { background: #c53030; }
+
+        /* 🌈 彩虹冷卻總覽精簡 Modal 視窗樣式 */
+        .rainbow-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .rainbow-modal-overlay.show { display: flex; }
+        .rainbow-modal-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modalPopup 0.2s ease-in-out;
+        }
+        .rainbow-modal-header {
+            background: #fdf2f8;
+            padding: 12px 16px;
+            border-bottom: 1px solid #fbcfe8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .rainbow-modal-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #db2777;
+        }
+        .rainbow-modal-close {
+            background: none;
+            border: none;
+            color: #db2777;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .rainbow-modal-body {
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
 
         .fish-group-section {
             margin-bottom: 12px;
@@ -650,6 +724,9 @@
 <!-- 🎣 懸浮釣魚追蹤按鈕（已固定於右上角） -->
 <button class="btn-fish-modal-open" onclick="openFishModal()">🎣 釣魚冷卻追蹤</button>
 
+<!-- 🌈 懸浮彩虹冷卻追蹤按鈕（固定於釣魚按鈕下方，帶有即時追蹤數量） -->
+<button class="btn-rainbow-modal-open" id="rainbowModalOpenBtn" onclick="openRainbowModal()">🌈 彩虹冷卻追蹤 (0)</button>
+
 <div class="top-nav-bar">
     <a href="admin.html" class="admin-link">⚙️ 前往後台管理中心</a>
 </div>
@@ -662,13 +739,13 @@
 </div>
 
 <!-- 📺 可收合式廣告面版樣式 -->
-<div class="ad-collapsible-container">
-    <div class="ad-header-bar" onclick="toggleAdPanel()">
+<div class="collapsible-container">
+    <div class="collapsible-header-bar" onclick="togglePanel('adContentBody', 'adToggleArrow')">
         <span id="adPanelTitle">📺 今日廣告賺 R 幣記錄 (已完成: 0/0)</span>
         <span id="adToggleArrow">▼ 展開</span>
     </div>
-    <div class="ad-content-body" id="adContentBody">
-        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 依 R 幣帳號名稱排序，接著依 iOS 帳號名稱排序，點擊即可切換今日是否已看完廣告：</div>
+    <div class="collapsible-content-body" id="adContentBody">
+        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 點擊：切換今日是否已看完廣告 | <strong>長按：加入彩虹冷卻 (19分30秒)</strong></div>
         <div class="ad-grid" id="adGridArea"></div>
     </div>
 </div>
@@ -735,6 +812,22 @@
     </div>
 </div>
 
+<!-- 🌈 彩虹冷卻總覽 Modal 視窗（可點擊背景關閉） -->
+<div class="rainbow-modal-overlay" id="rainbowModalOverlay" onclick="handleRainbowOverlayClick(event)">
+    <div class="rainbow-modal-card">
+        <div class="rainbow-modal-header">
+            <span class="rainbow-modal-title">🌈 彩虹冷卻倒數總覽</span>
+            <button class="rainbow-modal-close" onclick="closeRainbowModal()">&times;</button>
+        </div>
+        <div class="rainbow-modal-body">
+            <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">💡 結束後點擊可解除，長按可重新倒數</div>
+            <div class="rainbow-box" id="rainbowOverviewBox" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                <span style="font-size: 12px; color: #a0aec0;">目前沒有進行中的彩虹冷卻</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ⚠️ 準備釣魚提醒專屬 Modal 視窗 -->
 <div class="ready-fish-modal-overlay" id="readyFishModal">
     <div class="ready-fish-card">
@@ -742,6 +835,16 @@
         <p style="font-size: 13px; color: #4a5568; margin: 10px 0;">剩餘時間還有：</p>
         <div id="readyModalCountdown" style="font-size: 26px; font-weight: bold; color: #2b6cb0; margin-bottom: 20px;">00:00</div>
         <button onclick="closeReadyFishModal()" style="background: #718096; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">我知道了 (隱藏視窗)</button>
+    </div>
+</div>
+
+<!-- 🌈 彩虹冷卻時間到提醒專屬 Modal 視窗 -->
+<div class="ready-fish-modal-overlay" id="readyRainbowModal">
+    <div class="ready-fish-card" style="border: 2px solid #f472b6;">
+        <h3 style="margin-top: 0; color: #db2777; font-size: 18px;">🌈 彩虹冷卻時間到！</h3>
+        <p style="font-size: 13px; color: #4a5568; margin: 10px 0;">以下帳號的彩虹冷卻已經結束：</p>
+        <div id="readyRainbowAccountList" style="font-size: 18px; font-weight: bold; color: #9d174d; margin-bottom: 20px; max-height: 120px; overflow-y: auto;">-</div>
+        <button onclick="closeReadyRainbowModal()" style="background: #db2777; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">我知道了 (關閉提醒)</button>
     </div>
 </div>
 
@@ -783,6 +886,7 @@
     let adWatchedData = {}; 
     let coinData = {}; 
     let fishingCdData = {}; 
+    let rainbowCdData = {}; 
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -790,9 +894,11 @@
     let hasAlerted5Min = false;
     let hasAlerted2Min = false;
     let readyModalManuallyClosed = false; 
+    let alertedRainbowSet = new Set();
     
     const FISHING_CD_DURATION = 60 * 60 * 1000;
     const FISHING_CD_OFFSET = 45 * 60 * 1000;
+    const RAINBOW_CD_DURATION = (19 * 60 + 30) * 1000; // 19分30秒
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -809,6 +915,7 @@
                 updateModalFishingTimerOnly();
             }
             checkReadyFishModalTimer();
+            renderRainbowOverview();
         }, 1000);
     });
 
@@ -882,6 +989,7 @@
                 adWatchedData = {};
                 coinData = {};
                 fishingCdData = {};
+                rainbowCdData = {};
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
                 saveDataToCloud();
@@ -904,6 +1012,7 @@
 
                 coinData = data.coins || {};
                 fishingCdData = data.fishingCd || {}; 
+                rainbowCdData = data.rainbowCd || {}; 
 
                 yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
                 noQuestAccounts = data.noQuestAccounts || {};
@@ -913,6 +1022,7 @@
             renderDropdownMenu();
             renderQueuesBySelection();
             renderAdPanel(); 
+            renderRainbowOverview(); 
             updateDateLabels(); 
             
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
@@ -1105,6 +1215,10 @@
         readyModalManuallyClosed = true; 
     }
 
+    function closeReadyRainbowModal() {
+        document.getElementById('readyRainbowModal').classList.remove('show');
+    }
+
     function getFormattedDate(dateObj) {
         const m = dateObj.getMonth() + 1;
         const d = dateObj.getDate();
@@ -1125,6 +1239,7 @@
             adWatched: adWatchedData,
             coins: coinData,
             fishingCd: fishingCdData,
+            rainbowCd: rainbowCdData,
             yesterdayCompleteTimes: yesterdayCompleteTimes,
             noQuestAccounts: noQuestAccounts,
             today: {},
@@ -1170,6 +1285,21 @@
 
     function closeFishModal() {
         document.getElementById('fishModalOverlay').classList.remove('show');
+    }
+
+    function openRainbowModal() {
+        document.getElementById('rainbowModalOverlay').classList.add('show');
+        renderRainbowOverview();
+    }
+
+    function closeRainbowModal() {
+        document.getElementById('rainbowModalOverlay').classList.remove('show');
+    }
+
+    function handleRainbowOverlayClick(event) {
+        if (event.target === document.getElementById('rainbowModalOverlay')) {
+            closeRainbowModal();
+        }
     }
 
     function renderFishModalContent() {
@@ -1261,9 +1391,9 @@
         });
     }
 
-    function toggleAdPanel() {
-        const body = document.getElementById('adContentBody');
-        const arrow = document.getElementById('adToggleArrow');
+    function togglePanel(bodyId, arrowId) {
+        const body = document.getElementById(bodyId);
+        const arrow = document.getElementById(arrowId);
         body.classList.toggle('show');
         if (body.classList.contains('show')) {
             arrow.innerText = '▲ 收合';
@@ -1287,15 +1417,147 @@
             const chip = document.createElement('div');
             chip.className = `ad-chip ${isWatched ? 'watched' : ''}`;
             chip.innerText = accName;
+
             chip.onclick = () => {
                 adWatchedData[accName] = !adWatchedData[accName];
                 saveDataToCloud();
                 renderAdPanel();
             };
+
+            let pressTimer = null;
+
+            chip.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    triggerRainbowCooldown(accName);
+                }, 600);
+            });
+            chip.addEventListener('touchend', () => clearTimeout(pressTimer));
+            chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+            chip.addEventListener('mousedown', (e) => {
+                if (e.button === 2) {
+                    e.preventDefault();
+                    triggerRainbowCooldown(accName);
+                    return;
+                }
+                pressTimer = setTimeout(() => {
+                    triggerRainbowCooldown(accName);
+                }, 600);
+            });
+            chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
+            chip.addEventListener('contextmenu', (e) => e.preventDefault());
+
             grid.appendChild(chip);
         });
 
         document.getElementById('adPanelTitle').innerText = `📺 今日廣告賺 R 幣記錄 (已完成: ${watchedCount}/${totalCount})`;
+    }
+
+    function triggerRainbowCooldown(accName) {
+        rainbowCdData[accName] = Date.now() + RAINBOW_CD_DURATION;
+        alertedRainbowSet.delete(accName);
+        saveDataToCloud();
+        renderRainbowOverview();
+    }
+
+    function renderRainbowOverview() {
+        const box = document.getElementById('rainbowOverviewBox');
+        const openBtn = document.getElementById('rainbowModalOpenBtn');
+        if (!box || !openBtn) return;
+        box.innerHTML = '';
+
+        const now = Date.now();
+        let activeRainbowList = [];
+        let newlyFinishedAccounts = [];
+
+        Object.keys(rainbowCdData).forEach(accName => {
+            let cdEnd = rainbowCdData[accName] || 0;
+            activeRainbowList.push({ name: accName, cdEnd: cdEnd });
+
+            if (now >= cdEnd && !alertedRainbowSet.has(accName)) {
+                alertedRainbowSet.add(accName);
+                newlyFinishedAccounts.push(accName);
+            }
+        });
+
+        if (newlyFinishedAccounts.length > 0) {
+            const rainbowModal = document.getElementById('readyRainbowModal');
+            const listEl = document.getElementById('readyRainbowAccountList');
+            listEl.innerText = newlyFinishedAccounts.join('、');
+            rainbowModal.classList.add('show');
+        }
+
+        activeRainbowList.sort((a, b) => a.cdEnd - b.cdEnd);
+        
+        openBtn.innerText = `🌈 彩虹冷卻追蹤 (${activeRainbowList.length})`;
+
+        if (activeRainbowList.length === 0) {
+            box.innerHTML = `<span style="font-size: 12px; color: #a0aec0;">目前沒有進行中的彩虹冷卻</span>`;
+            return;
+        }
+
+        activeRainbowList.forEach(item => {
+            const remainMs = item.cdEnd - now;
+            const isCdFinished = remainMs <= 0;
+
+            const chip = document.createElement('div');
+            chip.className = `quest-chip ${isCdFinished ? 'completed' : ''}`;
+            chip.style.display = 'inline-flex';
+            chip.style.width = 'auto';
+            chip.style.margin = '2px';
+            chip.style.fontSize = '13px';
+            chip.style.padding = '5px 10px';
+
+            if (isCdFinished) {
+                chip.innerHTML = `<span>${item.name}</span><span style="font-size: 11px; color: #22543d; font-weight: bold; margin-left:4px;">(結束)</span>`;
+            } else {
+                let totalSecs = Math.ceil(remainMs / 1000);
+                let mm = Math.floor(totalSecs / 60);
+                let ss = totalSecs % 60;
+                let timeStr = `${mm}:${String(ss).padStart(2, '0')}`;
+                chip.style.background = '#f3f4f6';
+                chip.style.color = '#4a5568';
+                chip.style.borderColor = '#d1d5db';
+                chip.innerHTML = `<span>${item.name}</span><span style="font-size: 11px; color: #e11d48; font-weight: bold; margin-left:4px;">${timeStr}</span>`;
+            }
+            
+            chip.onclick = () => {
+                if (isCdFinished) {
+                    delete rainbowCdData[item.name];
+                    alertedRainbowSet.delete(item.name);
+                    saveDataToCloud();
+                    renderRainbowOverview();
+                } else {
+                    alert(`⏳ 帳號【${item.name}】冷卻中尚未結束！若要重新倒數請長按。`);
+                }
+            };
+
+            let pressTimer = null;
+            chip.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    triggerRainbowCooldown(item.name);
+                }, 600);
+            });
+            chip.addEventListener('touchend', () => clearTimeout(pressTimer));
+            chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+            chip.addEventListener('mousedown', (e) => {
+                if (e.button === 2) {
+                    e.preventDefault();
+                    triggerRainbowCooldown(item.name);
+                    return;
+                }
+                pressTimer = setTimeout(() => {
+                    triggerRainbowCooldown(item.name);
+                }, 600);
+            });
+            chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
+            chip.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            box.appendChild(chip);
+        });
     }
 
     function toggleDropdownMenu() { document.getElementById('dropdownMenu').classList.toggle('show'); }
@@ -1747,6 +2009,8 @@
         todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
         activeDateStr = nextDayStr; 
         adWatchedData = {}; 
+        rainbowCdData = {}; 
+        alertedRainbowSet.clear();
         noQuestAccounts = {}; 
         selectedGroupNames = new Set(['R少']);
         
@@ -1755,6 +2019,7 @@
         renderDropdownMenu();
         renderQueuesBySelection();
         renderAdPanel();
+        renderRainbowOverview();
         updateDateLabels();
         updateStats();
         updatePendingOverview();
