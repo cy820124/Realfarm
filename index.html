@@ -607,12 +607,26 @@
             position: relative;
         }
         .fish-btn:hover { background: #e2e8f0; }
+        
+        /* 💡 釣魚晶片顏色同步廣告紀錄的顏色設計 */
+        .fish-btn.watched {
+            background: #c6f6d5;
+            color: #22543d;
+            border-color: #9ae6b4;
+        }
         .fish-btn.cooldown {
             background: #e2e8f0;
             color: #a0aec0;
             border-color: #cbd5e0;
             opacity: 0.8;
         }
+        .fish-btn.cooldown.watched {
+            background: #c6f6d5;
+            color: #22543d;
+            border-color: #9ae6b4;
+            opacity: 0.85;
+        }
+
         .fish-btn .cd-text {
             font-size: 10px;
             color: #e53e3e;
@@ -629,14 +643,6 @@
             top: 2px;
             right: 3px;
             color: #e53e3e; 
-            font-size: 9px;
-            line-height: 1;
-        }    
-        .badge-ad { 
-            position: absolute;
-            bottom: 2px;
-            right: 3px;
-            color: #d69e2e; 
             font-size: 9px;
             line-height: 1;
         }       
@@ -797,6 +803,7 @@
         <button class="modal-floating-close" onclick="closeFishModal()">&times;</button>
         <div class="modal-body">
             <div>
+                <div style="font-size: 11px; color: #718096; margin-bottom: 6px; text-align: center;">💡 點擊晶片：觸發釣魚冷卻 | <strong>長按晶片：切換看廣告狀態</strong></div>
                 <div id="fishModalContentContainer"></div>
             </div>
             <div>
@@ -805,7 +812,7 @@
                     <div id="modalFishingTimerDisplay">載入中...</div>
                 </div>
                 <div style="font-size: 11px; color: #718096; margin-top: 8px; text-align: center; background: #f7fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    💡 小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角） ｜ <span style="color:#d69e2e; font-weight:bold;">●</span> 尚未看廣告（右下角）
+                    💡 小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角）
                 </div>
             </div>
         </div>
@@ -1357,18 +1364,15 @@
                 let remainMin = Math.floor(remainSec / 60);
                 let remainS = remainSec % 60;
 
-                const btn = document.createElement('button');
-                btn.className = `fish-btn ${isCd ? 'cooldown' : ''}`;
-                
                 const isAdWatched = !!adWatchedData[acc];
                 const hasPendingQuest = pendingOrInProgressSet.has(acc);
 
+                const btn = document.createElement('button');
+                btn.className = `fish-btn ${isCd ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''}`;
+
                 let badgeHtml = '';
-                if (!isAdWatched || hasPendingQuest) {
-                    badgeHtml = `<div class="fish-badges">`;
-                    if (hasPendingQuest) badgeHtml += `<span class="badge-quest" title="當前任務未完成">●</span>`;
-                    if (!isAdWatched) badgeHtml += `<span class="badge-ad" title="尚未看廣告">●</span>`;
-                    badgeHtml += `</div>`;
+                if (hasPendingQuest) {
+                    badgeHtml = `<div class="fish-badges"><span class="badge-quest" title="當前任務未完成">●</span></div>`;
                 }
 
                 let htmlContent = `${badgeHtml}<span>${acc}</span>`;
@@ -1378,10 +1382,35 @@
                 }
                 btn.innerHTML = htmlContent;
 
+                // 💡 點擊：觸發釣魚冷卻
                 btn.onclick = () => {
                     fishingCdData[acc] = Date.now() + FISHING_CD_DURATION;
                     gameRef.update({ fishingCd: fishingCdData });
                 };
+
+                // 💡 長按：切換廣告標記狀態
+                let pressTimer = null;
+                btn.addEventListener('touchstart', (e) => {
+                    pressTimer = setTimeout(() => {
+                        e.preventDefault();
+                        toggleFishAdWatchedStatus(acc);
+                    }, 600);
+                });
+                btn.addEventListener('touchend', () => clearTimeout(pressTimer));
+                btn.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+                btn.addEventListener('mousedown', (e) => {
+                    if (e.button === 2) {
+                        e.preventDefault();
+                        toggleFishAdWatchedStatus(acc);
+                        return;
+                    }
+                    pressTimer = setTimeout(() => {
+                        toggleFishAdWatchedStatus(acc);
+                    }, 600);
+                });
+                btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
+                btn.addEventListener('contextmenu', (e) => e.preventDefault());
 
                 grid.appendChild(btn);
             });
@@ -1389,6 +1418,13 @@
             section.appendChild(grid);
             container.appendChild(section);
         });
+    }
+
+    function toggleFishAdWatchedStatus(accName) {
+        adWatchedData[accName] = !adWatchedData[accName];
+        saveDataToCloud();
+        renderAdPanel();
+        renderFishModalContent();
     }
 
     function togglePanel(bodyId, arrowId) {
@@ -1422,6 +1458,9 @@
                 adWatchedData[accName] = !adWatchedData[accName];
                 saveDataToCloud();
                 renderAdPanel();
+                if (document.getElementById('fishModalOverlay').classList.contains('show')) {
+                    renderFishModalContent();
+                }
             };
 
             let pressTimer = null;
