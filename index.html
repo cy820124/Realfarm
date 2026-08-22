@@ -2044,12 +2044,21 @@
         document.getElementById('nameModalOverlay').classList.remove('show');
 
         yesterdayCompleteTimes = {};
+        
+        // 💡 結算：收集昨日完成時間，並針對「當日任務有打勾完成」的帳號自動 R 幣 +3
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
-            if (chip.dataset.status === 'completed' && chip.dataset.completedAt) {
-                yesterdayCompleteTimes[String(chip.dataset.name)] = chip.dataset.completedAt;
+            let accKey = String(chip.dataset.name);
+            if (chip.dataset.status === 'completed') {
+                if (chip.dataset.completedAt) {
+                    yesterdayCompleteTimes[accKey] = chip.dataset.completedAt;
+                }
+                // 任務完成自動 +3 R幣
+                let currentCoin = Number(coinData[accKey]) || 0;
+                coinData[accKey] = currentCoin + 3;
             }
         });
 
+        // 💡 結算：針對「有看廣告」的帳號自動 R 幣 +1
         if (adWatchedData && coinData) {
             Object.keys(adWatchedData).forEach(accName => {
                 if (adWatchedData[accName] === true) {
@@ -2088,7 +2097,7 @@
         updateStats();
         updatePendingOverview();
         updateQueueAssignedStatus();
-        alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 上一次各帳號的完成時間已成功記錄至佇列中！`);
+        alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
     }
 
     function resetTodayData() {
