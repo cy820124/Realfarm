@@ -774,7 +774,7 @@
     let activeDateStr = ''; 
     let adWatchedData = {}; 
     let coinData = {}; 
-    let fishingCdData = {}; // 直接純 Object 紀錄：{ 帳號名稱: 時間戳記 }
+    let fishingCdData = {}; 
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -895,7 +895,7 @@
                 }
 
                 coinData = data.coins || {};
-                fishingCdData = data.fishingCd || {}; // 直接讀取物件
+                fishingCdData = data.fishingCd || {}; 
 
                 yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
                 noQuestAccounts = data.noQuestAccounts || {};
@@ -1602,7 +1602,8 @@
             deviceTagHtml = `<span class="device-tag">${chip.dataset.device}</span>`;
         }
 
-        let removeBtnHtml = (!isHistory && !isOverview) ? '<span class="remove-btn">&times;</span>' : '';
+        // 💡 只有當狀態不是「已完成」時，才顯示刪除按鈕
+        let removeBtnHtml = (!isHistory && !isOverview && status !== 'completed') ? '<span class="remove-btn">&times;</span>' : '';
 
         chip.innerHTML = `${deviceTagHtml}<span>${prefix}${accName}</span>${removeBtnHtml}`;
 
