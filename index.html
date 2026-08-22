@@ -971,6 +971,16 @@
         return list;
     }
 
+    // 💡 強制確保物件的 Key 都是字串型態，避免 Firebase 數字型態轉型導致讀不到
+    function normalizeObjectKeys(obj) {
+        if (!obj || typeof obj !== 'object') return {};
+        let normalized = {};
+        Object.keys(obj).forEach(key => {
+            normalized[String(key)] = obj[key];
+        });
+        return normalized;
+    }
+
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -1010,19 +1020,19 @@
                     let converted = {};
                     let flatList = getAllFlatAccounts();
                     data.adWatched.forEach((val, idx) => {
-                        if (flatList[idx] && val) converted[flatList[idx].name] = true;
+                        if (flatList[idx] && val) converted[String(flatList[idx].name)] = true;
                     });
                     adWatchedData = converted;
                 } else {
-                    adWatchedData = data.adWatched || {};
+                    adWatchedData = normalizeObjectKeys(data.adWatched);
                 }
 
-                coinData = data.coins || {};
-                fishingCdData = data.fishingCd || {}; 
-                rainbowCdData = data.rainbowCd || {}; 
+                coinData = normalizeObjectKeys(data.coins);
+                fishingCdData = normalizeObjectKeys(data.fishingCd); 
+                rainbowCdData = normalizeObjectKeys(data.rainbowCd); 
 
-                yesterdayCompleteTimes = data.yesterdayCompleteTimes || {};
-                noQuestAccounts = data.noQuestAccounts || {};
+                yesterdayCompleteTimes = normalizeObjectKeys(data.yesterdayCompleteTimes);
+                noQuestAccounts = normalizeObjectKeys(data.noQuestAccounts);
             }
 
             initTable();
@@ -1041,7 +1051,7 @@
                         data.today[device].forEach(item => {
                             const uid = item.uid || ('chip_' + Math.random().toString(36).substr(2, 9));
                             const completedAt = item.completedAt || null;
-                            addChip(zone, item.name, item.group, item.status || 'normal', false, uid, completedAt);
+                            addChip(zone, String(item.name), item.group, item.status || 'normal', false, uid, completedAt);
                         });
                     }
                 });
@@ -1052,7 +1062,7 @@
                     if (zone) {
                         data.yesterday[device].forEach(item => {
                             const uid = item.uid || ('hist_' + Math.random().toString(36).substr(2, 9));
-                            addChip(zone, item.name, item.group, item.status || 'normal', true, uid, null);
+                            addChip(zone, String(item.name), item.group, item.status || 'normal', true, uid, null);
                         });
                     }
                 });
@@ -1243,12 +1253,12 @@
             groups: accountGroups,
             initialGroups: todayInitialGroups || {},
             activeDate: activeDateStr,
-            adWatched: adWatchedData,
-            coins: coinData,
-            fishingCd: fishingCdData,
-            rainbowCd: rainbowCdData,
-            yesterdayCompleteTimes: yesterdayCompleteTimes,
-            noQuestAccounts: noQuestAccounts,
+            adWatched: normalizeObjectKeys(adWatchedData),
+            coins: normalizeObjectKeys(coinData),
+            fishingCd: normalizeObjectKeys(fishingCdData),
+            rainbowCd: normalizeObjectKeys(rainbowCdData),
+            yesterdayCompleteTimes: normalizeObjectKeys(yesterdayCompleteTimes),
+            noQuestAccounts: normalizeObjectKeys(noQuestAccounts),
             today: {},
             yesterday: {}
         };
@@ -1258,7 +1268,7 @@
             zone.querySelectorAll('.quest-chip').forEach(chip => {
                 chips.push({ 
                     uid: chip.dataset.uid, 
-                    name: chip.dataset.name, 
+                    name: String(chip.dataset.name), 
                     group: chip.dataset.group, 
                     status: chip.dataset.status || 'normal',
                     completedAt: chip.dataset.completedAt || '',
@@ -1273,7 +1283,7 @@
             zone.querySelectorAll('.quest-chip').forEach(chip => {
                 chips.push({ 
                     uid: chip.dataset.uid, 
-                    name: chip.dataset.name, 
+                    name: String(chip.dataset.name), 
                     group: chip.dataset.group, 
                     status: chip.dataset.status || 'normal',
                     completed: chip.classList.contains('completed') 
@@ -1319,7 +1329,7 @@
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
             const status = chip.dataset.status || 'normal';
             if (status !== 'completed') {
-                pendingOrInProgressSet.add(chip.dataset.name);
+                pendingOrInProgressSet.add(String(chip.dataset.name));
             }
         });
 
@@ -1334,8 +1344,10 @@
             let accounts = [...accountGroups[groupName]];
 
             accounts.sort((a, b) => {
-                let cdA = fishingCdData[a] || 0;
-                let cdB = fishingCdData[b] || 0;
+                let keyA = String(a);
+                let keyB = String(b);
+                let cdA = fishingCdData[keyA] || 0;
+                let cdB = fishingCdData[keyB] || 0;
                 let isCdA = now < cdA;
                 let isCdB = now < cdB;
 
@@ -1356,7 +1368,8 @@
             grid.className = 'fish-grid';
 
             accounts.forEach(acc => {
-                let cdEnd = fishingCdData[acc] || 0;
+                const accKey = String(acc);
+                let cdEnd = fishingCdData[accKey] || 0;
                 let adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
                 const isCd = now < adjustedCdEnd;
                 
@@ -1364,8 +1377,8 @@
                 let remainMin = Math.floor(remainSec / 60);
                 let remainS = remainSec % 60;
 
-                const isAdWatched = !!adWatchedData[acc];
-                const hasPendingQuest = pendingOrInProgressSet.has(acc);
+                const isAdWatched = !!adWatchedData[accKey];
+                const hasPendingQuest = pendingOrInProgressSet.has(accKey);
 
                 const btn = document.createElement('button');
                 btn.className = `fish-btn ${isCd ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''}`;
@@ -1382,10 +1395,10 @@
                 }
                 btn.innerHTML = htmlContent;
 
-                // 💡 點擊：觸發釣魚冷卻
+                // 💡 點擊：觸發釣魚冷卻（確保 Key 轉為字串）
                 btn.onclick = () => {
-                    fishingCdData[acc] = Date.now() + FISHING_CD_DURATION;
-                    gameRef.update({ fishingCd: fishingCdData });
+                    fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
+                    gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
                 };
 
                 // 💡 長按：切換廣告標記狀態
@@ -1393,7 +1406,7 @@
                 btn.addEventListener('touchstart', (e) => {
                     pressTimer = setTimeout(() => {
                         e.preventDefault();
-                        toggleFishAdWatchedStatus(acc);
+                        toggleFishAdWatchedStatus(accKey);
                     }, 600);
                 });
                 btn.addEventListener('touchend', () => clearTimeout(pressTimer));
@@ -1402,11 +1415,11 @@
                 btn.addEventListener('mousedown', (e) => {
                     if (e.button === 2) {
                         e.preventDefault();
-                        toggleFishAdWatchedStatus(acc);
+                        toggleFishAdWatchedStatus(accKey);
                         return;
                     }
                     pressTimer = setTimeout(() => {
-                        toggleFishAdWatchedStatus(acc);
+                        toggleFishAdWatchedStatus(accKey);
                     }, 600);
                 });
                 btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
@@ -1421,7 +1434,8 @@
     }
 
     function toggleFishAdWatchedStatus(accName) {
-        adWatchedData[accName] = !adWatchedData[accName];
+        const accKey = String(accName);
+        adWatchedData[accKey] = !adWatchedData[accKey];
         saveDataToCloud();
         renderAdPanel();
         renderFishModalContent();
@@ -1447,7 +1461,8 @@
         let totalCount = sortedAdAccounts.length;
 
         sortedAdAccounts.forEach(accName => {
-            const isWatched = !!adWatchedData[accName];
+            const accKey = String(accName);
+            const isWatched = !!adWatchedData[accKey];
             if (isWatched) watchedCount++;
 
             const chip = document.createElement('div');
@@ -1455,7 +1470,7 @@
             chip.innerText = accName;
 
             chip.onclick = () => {
-                adWatchedData[accName] = !adWatchedData[accName];
+                adWatchedData[accKey] = !adWatchedData[accKey];
                 saveDataToCloud();
                 renderAdPanel();
                 if (document.getElementById('fishModalOverlay').classList.contains('show')) {
@@ -1468,7 +1483,7 @@
             chip.addEventListener('touchstart', (e) => {
                 pressTimer = setTimeout(() => {
                     e.preventDefault();
-                    triggerRainbowCooldown(accName);
+                    triggerRainbowCooldown(accKey);
                 }, 600);
             });
             chip.addEventListener('touchend', () => clearTimeout(pressTimer));
@@ -1477,11 +1492,11 @@
             chip.addEventListener('mousedown', (e) => {
                 if (e.button === 2) {
                     e.preventDefault();
-                    triggerRainbowCooldown(accName);
+                    triggerRainbowCooldown(accKey);
                     return;
                 }
                 pressTimer = setTimeout(() => {
-                    triggerRainbowCooldown(accName);
+                    triggerRainbowCooldown(accKey);
                 }, 600);
             });
             chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
@@ -1494,8 +1509,9 @@
     }
 
     function triggerRainbowCooldown(accName) {
-        rainbowCdData[accName] = Date.now() + RAINBOW_CD_DURATION;
-        alertedRainbowSet.delete(accName);
+        const accKey = String(accName);
+        rainbowCdData[accKey] = Date.now() + RAINBOW_CD_DURATION;
+        alertedRainbowSet.delete(accKey);
         saveDataToCloud();
         renderRainbowOverview();
     }
@@ -1656,32 +1672,33 @@
             queueBox.dataset.group = groupName;
             if (accountGroups[groupName]) {
                 accountGroups[groupName].forEach(acc => {
+                    const accKey = String(acc);
                     const btn = document.createElement('button');
                     btn.className = 'queue-btn';
                     
-                    if (noQuestAccounts[acc]) {
+                    if (noQuestAccounts[accKey]) {
                         btn.classList.add('no-quest');
                     }
 
-                    let yestTimeText = yesterdayCompleteTimes[acc] || '';
+                    let yestTimeText = yesterdayCompleteTimes[accKey] || '';
                     if (yestTimeText) {
                         btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${yestTimeText})</span>`;
                     } else {
                         btn.innerText = acc;
                     }
 
-                    btn.dataset.name = acc;
+                    btn.dataset.name = accKey;
                     btn.dataset.group = groupName;
 
                     btn.onclick = () => {
-                        if (noQuestAccounts[acc]) return; 
+                        if (noQuestAccounts[accKey]) return; 
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
                         if (!targetZone) { alert('請先點擊下方表格選取【當前任務紀錄】對應裝置的格子！'); return; }
-                        const existingDevice = checkAccountAddedToday(acc);
+                        const existingDevice = checkAccountAddedToday(accKey);
                         if (existingDevice) { alert(`⚠️ 角色【${acc}】今天已經分配給【${existingDevice}】囉！`); return; }
                         
                         const newUid = 'chip_' + Math.random().toString(36).substr(2, 9);
-                        addChip(targetZone, acc, groupName, 'normal', false, newUid, null);
+                        addChip(targetZone, accKey, groupName, 'normal', false, newUid, null);
                         saveDataToCloud();
                         updateStats();
                         updatePendingOverview();
@@ -1692,7 +1709,7 @@
                     btn.addEventListener('touchstart', (e) => {
                         pressTimer = setTimeout(() => {
                             e.preventDefault();
-                            toggleNoQuestStatus(acc);
+                            toggleNoQuestStatus(accKey);
                         }, 600);
                     });
                     btn.addEventListener('touchend', () => clearTimeout(pressTimer));
@@ -1700,7 +1717,7 @@
 
                     btn.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
-                        toggleNoQuestStatus(acc);
+                        toggleNoQuestStatus(accKey);
                     });
 
                     queueBox.appendChild(btn);
@@ -1723,10 +1740,11 @@
     }
 
     function toggleNoQuestStatus(accName) {
-        if (noQuestAccounts[accName]) {
-            delete noQuestAccounts[accName];
+        const accKey = String(accName);
+        if (noQuestAccounts[accKey]) {
+            delete noQuestAccounts[accKey];
         } else {
-            noQuestAccounts[accName] = true;
+            noQuestAccounts[accKey] = true;
         }
         saveDataToCloud();
         renderQueuesBySelection();
@@ -1735,11 +1753,11 @@
     function updateQueueAssignedStatus() {
         const assignedMap = new Map();
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
-            assignedMap.set(chip.dataset.name, chip.dataset.group);
+            assignedMap.set(String(chip.dataset.name), chip.dataset.group);
         });
 
         document.querySelectorAll('.queue-btn').forEach(btn => {
-            const accName = btn.dataset.name;
+            const accName = String(btn.dataset.name);
             const accGroup = btn.dataset.group;
             if (assignedMap.has(accName) && assignedMap.get(accName) === accGroup) {
                 btn.classList.add('assigned');
@@ -1750,11 +1768,15 @@
     }
 
     function syncAllGroupsFromDOM() {
-        const newGroups = {...accountGroups};
+        const newGroups = {};
+        Object.keys(accountGroups).forEach(g => {
+            newGroups[g] = [...accountGroups[g]];
+        });
+
         document.querySelectorAll('.queue-box').forEach(box => {
             const gName = box.dataset.group;
             const items = [];
-            box.querySelectorAll('.queue-btn').forEach(btn => { items.push(btn.dataset.name); });
+            box.querySelectorAll('.queue-btn').forEach(btn => { items.push(String(btn.dataset.name)); });
             newGroups[gName] = items;
         });
         accountGroups = newGroups;
@@ -1763,9 +1785,10 @@
     }
 
     function checkAccountAddedToday(accName) {
+        const targetKey = String(accName);
         let foundDevice = null;
         document.querySelectorAll(`.drop-zone.today-zone .quest-chip`).forEach(chip => {
-            if (chip.dataset.name === accName) foundDevice = chip.closest('.drop-zone').dataset.device;
+            if (String(chip.dataset.name) === targetKey) foundDevice = chip.closest('.drop-zone').dataset.device;
         });
         return foundDevice;
     }
@@ -1812,17 +1835,18 @@
     }
 
     function addChip(zone, accName, groupName, status = 'normal', isHistory = false, uid = '', completedAt = null) {
+        const accKey = String(accName);
         const chip = document.createElement('div');
         chip.dataset.uid = uid;
-        chip.dataset.name = accName;
+        chip.dataset.name = accKey;
         chip.dataset.group = groupName;
         chip.dataset.status = status;
         if (completedAt) chip.dataset.completedAt = completedAt;
 
-        updateChipAppearance(chip, status, accName, isHistory, false, groupName);
+        updateChipAppearance(chip, status, accKey, isHistory, false, groupName);
 
         if (!isHistory) {
-            setupChipInteractions(chip, accName, groupName, uid);
+            setupChipInteractions(chip, accKey, groupName, uid);
         }
 
         zone.appendChild(chip);
@@ -1941,7 +1965,7 @@
                 const device = chip.closest('.drop-zone').dataset.device;
                 pendingChips.push({
                     uid: chip.dataset.uid,
-                    name: chip.dataset.name,
+                    name: String(chip.dataset.name),
                     group: chip.dataset.group,
                     status: status,
                     completedAt: chip.dataset.completedAt || '',
@@ -1976,10 +2000,10 @@
     function rotateAccountToTail(groupName, accName) {
         let list = accountGroups[groupName];
         if (!list) return;
-        let index = list.indexOf(accName);
+        let index = list.indexOf(String(accName));
         if (index > -1) {
             list.splice(index, 1); 
-            list.push(accName);   
+            list.push(String(accName));   
             renderQueuesBySelection();
         }
     }
@@ -2022,15 +2046,16 @@
         yesterdayCompleteTimes = {};
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
             if (chip.dataset.status === 'completed' && chip.dataset.completedAt) {
-                yesterdayCompleteTimes[chip.dataset.name] = chip.dataset.completedAt;
+                yesterdayCompleteTimes[String(chip.dataset.name)] = chip.dataset.completedAt;
             }
         });
 
         if (adWatchedData && coinData) {
             Object.keys(adWatchedData).forEach(accName => {
                 if (adWatchedData[accName] === true) {
-                    let currentCoin = Number(coinData[accName]) || 0;
-                    coinData[accName] = currentCoin + 1;
+                    let accKey = String(accName);
+                    let currentCoin = Number(coinData[accKey]) || 0;
+                    coinData[accKey] = currentCoin + 1;
                 }
             });
         }
@@ -2041,7 +2066,7 @@
             yestZone.innerHTML = '';
             todayZone.querySelectorAll('.quest-chip').forEach(chip => {
                 const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
-                addChip(yestZone, chip.dataset.name, chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
+                addChip(yestZone, String(chip.dataset.name), chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
             });
             todayZone.innerHTML = '';
         });
