@@ -608,7 +608,6 @@
         }
         .fish-btn:hover { background: #e2e8f0; }
         
-        /* 💡 釣魚晶片顏色同步廣告紀錄的顏色設計 */
         .fish-btn.watched {
             background: #c6f6d5;
             color: #22543d;
@@ -621,10 +620,10 @@
             opacity: 0.8;
         }
         .fish-btn.cooldown.watched {
-            background: #c6f6d5;
-            color: #22543d;
-            border-color: #9ae6b4;
-            opacity: 0.85;
+            background: #e2e8f0 !important;
+            color: #a0aec0 !important;
+            border-color: #cbd5e0 !important;
+            opacity: 0.8;
         }
 
         .fish-btn .cd-text {
@@ -803,7 +802,6 @@
         <button class="modal-floating-close" onclick="closeFishModal()">&times;</button>
         <div class="modal-body">
             <div>
-                <div style="font-size: 11px; color: #718096; margin-bottom: 6px; text-align: center;">💡 點擊晶片：觸發釣魚冷卻 | <strong>長按晶片：切換看廣告狀態</strong></div>
                 <div id="fishModalContentContainer"></div>
             </div>
             <div>
@@ -812,7 +810,8 @@
                     <div id="modalFishingTimerDisplay">載入中...</div>
                 </div>
                 <div style="font-size: 11px; color: #718096; margin-top: 8px; text-align: center; background: #f7fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    💡 小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角）
+                    💡 點擊晶片：觸發釣魚冷卻 | <strong>長按晶片：切換看廣告狀態</strong><br>
+                    小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角）
                 </div>
             </div>
         </div>
@@ -827,7 +826,7 @@
             <button class="rainbow-modal-close" onclick="closeRainbowModal()">&times;</button>
         </div>
         <div class="rainbow-modal-body">
-            <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">💡 結束後點擊可解除，長按可重新倒數</div>
+            <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">💡 點擊：重新倒數 | <strong>長按：解除／清除冷卻</strong></div>
             <div class="rainbow-box" id="rainbowOverviewBox" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
                 <span style="font-size: 12px; color: #a0aec0;">目前沒有進行中的彩虹冷卻</span>
             </div>
@@ -971,7 +970,6 @@
         return list;
     }
 
-    // 💡 強制確保物件的 Key 都是字串型態，避免 Firebase 數字型態轉型導致讀不到
     function normalizeObjectKeys(obj) {
         if (!obj || typeof obj !== 'object') return {};
         let normalized = {};
@@ -1395,13 +1393,11 @@
                 }
                 btn.innerHTML = htmlContent;
 
-                // 💡 點擊：觸發釣魚冷卻（確保 Key 轉為字串）
                 btn.onclick = () => {
                     fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
                     gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
                 };
 
-                // 💡 長按：切換廣告標記狀態
                 let pressTimer = null;
                 btn.addEventListener('touchstart', (e) => {
                     pressTimer = setTimeout(() => {
@@ -1516,6 +1512,14 @@
         renderRainbowOverview();
     }
 
+    function removeRainbowCooldown(accName) {
+        const accKey = String(accName);
+        delete rainbowCdData[accKey];
+        alertedRainbowSet.delete(accKey);
+        saveDataToCloud();
+        renderRainbowOverview();
+    }
+
     function renderRainbowOverview() {
         const box = document.getElementById('rainbowOverviewBox');
         const openBtn = document.getElementById('rainbowModalOpenBtn');
@@ -1577,22 +1581,17 @@
                 chip.innerHTML = `<span>${item.name}</span><span style="font-size: 11px; color: #e11d48; font-weight: bold; margin-left:4px;">${timeStr}</span>`;
             }
             
+            // 💡 點擊：重新倒數
             chip.onclick = () => {
-                if (isCdFinished) {
-                    delete rainbowCdData[item.name];
-                    alertedRainbowSet.delete(item.name);
-                    saveDataToCloud();
-                    renderRainbowOverview();
-                } else {
-                    alert(`⏳ 帳號【${item.name}】冷卻中尚未結束！若要重新倒數請長按。`);
-                }
+                triggerRainbowCooldown(item.name);
             };
 
+            // 💡 長按：解除／清除冷卻
             let pressTimer = null;
             chip.addEventListener('touchstart', (e) => {
                 pressTimer = setTimeout(() => {
                     e.preventDefault();
-                    triggerRainbowCooldown(item.name);
+                    removeRainbowCooldown(item.name);
                 }, 600);
             });
             chip.addEventListener('touchend', () => clearTimeout(pressTimer));
@@ -1601,11 +1600,11 @@
             chip.addEventListener('mousedown', (e) => {
                 if (e.button === 2) {
                     e.preventDefault();
-                    triggerRainbowCooldown(item.name);
+                    removeRainbowCooldown(item.name);
                     return;
                 }
                 pressTimer = setTimeout(() => {
-                    triggerRainbowCooldown(item.name);
+                    removeRainbowCooldown(item.name);
                 }, 600);
             });
             chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
@@ -2045,20 +2044,17 @@
 
         yesterdayCompleteTimes = {};
         
-        // 💡 結算：收集昨日完成時間，並針對「當日任務有打勾完成」的帳號自動 R 幣 +3
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
             let accKey = String(chip.dataset.name);
             if (chip.dataset.status === 'completed') {
                 if (chip.dataset.completedAt) {
                     yesterdayCompleteTimes[accKey] = chip.dataset.completedAt;
                 }
-                // 任務完成自動 +3 R幣
                 let currentCoin = Number(coinData[accKey]) || 0;
                 coinData[accKey] = currentCoin + 3;
             }
         });
 
-        // 💡 結算：針對「有看廣告」的帳號自動 R 幣 +1
         if (adWatchedData && coinData) {
             Object.keys(adWatchedData).forEach(accName => {
                 if (adWatchedData[accName] === true) {
