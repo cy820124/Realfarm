@@ -80,22 +80,25 @@
         th { background: #f7fafc; cursor: pointer; user-select: none; }
         th:hover { background: #edf2f7; }
 
-        .coin-input { 
-            width: 70px; 
+        .coin-input, .mapping-input { 
+            width: 100%; 
             text-align: center; 
             padding: 4px; 
             border: 1px solid transparent; 
             background: transparent; 
             font-size: 13px; 
-            font-weight: bold; 
-            -moz-appearance: textfield; 
+        }
+        .coin-input {
+            width: 70px;
+            font-weight: bold;
+            -moz-appearance: textfield;
         }
         .coin-input::-webkit-outer-spin-button,
         .coin-input::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        .coin-input:focus { border-color: #3182ce; background: #fff; outline: none; border-radius: 4px; }
+        .coin-input:focus, .mapping-input:focus { border-color: #3182ce; background: #fff; outline: none; border-radius: 4px; }
         .back-link { display: block; text-align: center; margin-bottom: 15px; color: #3182ce; text-decoration: none; font-weight: bold; }
         
         /* 釣魚計時器專用樣式 (獨立局部更新區塊) */
@@ -164,7 +167,21 @@
     <div id="coinTableArea">載入中...</div>
 </div>
 
-<!-- 2. IOS 帳號獨立金幣維護 -->
+<!-- 2. 🏷️ 帳號代號對照表設定 (新增的獨立卡片) -->
+<div class="card">
+    <h2>🏷️ 帳號代號對照表設定</h2>
+    <div class="input-group editable-panel" id="mappingInputPanel">
+        <input type="text" id="newMapCodeInput" placeholder="代號 (例: 38)" style="width: 80px; flex: none;">
+        <input type="text" id="newMapFullInput" placeholder="完整帳號 (例: realfarm_user38)">
+        <button onclick="addAccountMapping()">新增對照</button>
+    </div>
+    <div style="font-size: 12px; color: #718096; margin-bottom: 8px;">
+        💡 獨立維護數字代號對應的完整帳號名稱，不影響金幣計算：
+    </div>
+    <div id="mappingTableArea">載入中...</div>
+</div>
+
+<!-- 3. IOS 帳號獨立金幣維護 -->
 <div class="card">
     <h2>🍏 IOS 帳號金幣維護</h2>
     <div class="input-group editable-panel" id="iosInputPanel">
@@ -177,7 +194,7 @@
     <div id="iosCoinTableArea">載入中...</div>
 </div>
 
-<!-- 3. 裝置清單管理 -->
+<!-- 4. 裝置清單管理 -->
 <div class="card">
     <h2>📱 裝置清單管理 (可直接拖曳調整順序)</h2>
     <div class="input-group editable-panel" id="deviceInputPanel">
@@ -187,13 +204,13 @@
     <div class="item-list" id="deviceListArea">載入中...</div>
 </div>
 
-<!-- 4. 匯入與匯出專區 -->
+<!-- 5. 匯入與匯出專區 -->
 <div class="card editable-panel" id="syncPanel" style="background: #f0fff4; border: 1px solid #c6f6d5;">
     <h2 style="color: #22543d; border-bottom-color: #9ae6b4;">📥 匯入與匯出設定文字</h2>
     <div style="font-size: 12px; color: #2f855a; margin-bottom: 8px;">
         你可以點擊「匯出目前設定」將現有清單轉成文字備份，或將文字貼上後點擊「執行文字匯入」更新雲端：
     </div>
-    <textarea id="importTextInput" placeholder="[裝置]&#10;C3, Realme&#10;&#10;[IOS]&#10;寶:0, 睡:0&#10;&#10;[R少]&#10;31:0"></textarea>
+    <textarea id="importTextInput" placeholder="[裝置]&#10;C3, Realme&#10;&#10;[對照]&#10;38:realfarm_user38, 39:realfarm_user39&#10;&#10;[IOS]&#10;寶:0, 睡:0&#10;&#10;[R少]&#10;31:0"></textarea>
     <div style="display: flex; justify-content: space-between; margin-top: 8px;">
         <button class="secondary" style="width: auto;" onclick="exportToText()">📤 匯出目前設定為文字</button>
         <button class="success" onclick="importFromText()">⚡ 執行文字匯入</button>
@@ -234,13 +251,14 @@
             cloudData = snapshot.val();
             
             if (!cloudData) {
-                cloudData = { devices: [], groups: { 'R少': [], 'R中': [], 'R多': [], 'IOS': [] }, coins: {} };
+                cloudData = { devices: [], groups: { 'R少': [], 'R中': [], 'R多': [], 'IOS': [] }, coins: {}, accountMappings: {} };
             }
 
             if (!cloudData.devices) cloudData.devices = [];
             if (!cloudData.groups) cloudData.groups = {};
             if (!cloudData.coins) cloudData.coins = {};
             if (!cloudData.groups['IOS']) cloudData.groups['IOS'] = [];
+            if (!cloudData.accountMappings) cloudData.accountMappings = {};
 
             if (!cloudData.nextFishingTime) {
                 cloudData.nextFishingTime = new Date().toISOString();
@@ -397,6 +415,12 @@
         textLines.push((cloudData.devices || []).join(', '));
         textLines.push('');
 
+        textLines.push('[對照]');
+        let mappings = cloudData.accountMappings || {};
+        let formattedMappings = Object.keys(mappings).map(code => `${code}:${mappings[code]}`);
+        textLines.push(formattedMappings.join(', '));
+        textLines.push('');
+
         textLines.push('[IOS]');
         let iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
         let formattedIos = iosList.map(acc => {
@@ -433,6 +457,7 @@
         let newDevices = [];
         let newGroups = { 'R少': [], 'R中': [], 'R多': [], 'IOS': [] };
         let newCoins = cloudData.coins || {};
+        let newMappings = cloudData.accountMappings || {};
 
         let currentSection = '';
         const lines = text.split('\n');
@@ -450,6 +475,17 @@
 
             if (currentSection === '裝置') {
                 newDevices.push(...items);
+            } else if (currentSection === '對照') {
+                items.forEach(item => {
+                    let parts = item.split(':');
+                    if (parts.length >= 2) {
+                        let code = parts[0].trim();
+                        let fullName = parts.slice(1).join(':').trim();
+                        if (code && fullName) {
+                            newMappings[code] = fullName;
+                        }
+                    }
+                });
             } else if (['R少', 'R中', 'R多', 'IOS'].includes(currentSection)) {
                 if (!newGroups[currentSection]) newGroups[currentSection] = [];
                 items.forEach(item => {
@@ -469,6 +505,7 @@
         cloudData.devices = newDevices;
         cloudData.groups = newGroups;
         cloudData.coins = newCoins;
+        cloudData.accountMappings = newMappings;
 
         saveToCloud();
         alert('🎉 成功匯入並更新雲端資料！');
@@ -483,6 +520,7 @@
         const devicePanel = document.getElementById('deviceInputPanel');
         const iosPanel = document.getElementById('iosInputPanel');
         const addPanel = document.getElementById('addAccountPanel');
+        const mappingPanel = document.getElementById('mappingInputPanel');
         
         let btnText = showEditMode ? '🔒 關閉編輯與匯入匯出模式' : '🔓 開啟新增/刪除與匯入匯出模式';
         let btnBg = showEditMode ? '#e53e3e' : '#718096';
@@ -497,11 +535,13 @@
             devicePanel.style.display = 'flex';
             iosPanel.style.display = 'flex';
             addPanel.style.display = 'block';
+            mappingPanel.style.display = 'flex';
         } else {
             syncPanel.style.display = 'none';
             devicePanel.style.display = 'none';
             iosPanel.style.display = 'none';
             addPanel.style.display = 'none';
+            mappingPanel.style.display = 'none';
         }
         renderAdminUI();
     }
@@ -540,6 +580,40 @@
                 }
             });
         }
+
+        // 🏷️ 渲染對照表表格
+        const mappingArea = document.getElementById('mappingTableArea');
+        const mappings = cloudData.accountMappings || {};
+        const mapKeys = Object.keys(mappings);
+
+        let mapHtml = `<table><thead><tr>
+            <th style="width: 80px;">代號</th>
+            <th>完整帳號 (點擊可直接修改)</th>`;
+        if (showEditMode) mapHtml += `<th style="width: 60px;">操作</th>`;
+        mapHtml += `</tr></thead><tbody>`;
+
+        if (mapKeys.length === 0) {
+            mapHtml += `<tr><td colspan="${showEditMode ? 3 : 2}" style="color:#a0aec0; padding:10px;">目前沒有對照資料</td></tr>`;
+        } else {
+            mapKeys.sort((a, b) => {
+                let numA = Number(a), numB = Number(b);
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                return a.localeCompare(b, 'zh-Hant');
+            }).forEach(code => {
+                let fullName = mappings[code] || '';
+                mapHtml += `<tr>
+                    <td><b>${code}</b></td>
+                    <td><input type="text" class="mapping-input" value="${fullName}" placeholder="輸入對應完整帳號" 
+                        onfocus="this.select()" 
+                        onchange="updateAccountMappingDirectly('${code}', this.value)"></td>`;
+                if (showEditMode) {
+                    mapHtml += `<td><button class="danger" style="padding:2px 6px; font-size:11px;" onclick="removeAccountMapping('${code}')">刪除</button></td>`;
+                }
+                mapHtml += `</tr>`;
+            });
+        }
+        mapHtml += `</tbody></table>`;
+        mappingArea.innerHTML = mapHtml;
 
         const iosList = (cloudData.groups && cloudData.groups['IOS']) ? cloudData.groups['IOS'] : [];
 
@@ -629,6 +703,46 @@
         }
         html += `</tbody></table>`;
         coinArea.innerHTML = html;
+    }
+
+    // 🏷️ 對照表邏輯：新增/修改/刪除
+    function addAccountMapping() {
+        const code = document.getElementById('newMapCodeInput').value.trim();
+        const fullName = document.getElementById('newMapFullInput').value.trim();
+
+        if (!code || !fullName) {
+            alert('請同時輸入代號與對應的完整帳號！');
+            return;
+        }
+
+        if (!cloudData.accountMappings) cloudData.accountMappings = {};
+        cloudData.accountMappings[code] = fullName;
+
+        document.getElementById('newMapCodeInput').value = '';
+        document.getElementById('newMapFullInput').value = '';
+        
+        saveToCloud();
+        renderAdminUI();
+    }
+
+    function updateAccountMappingDirectly(code, fullNameVal) {
+        if (!cloudData.accountMappings) cloudData.accountMappings = {};
+        let fullName = fullNameVal.trim();
+        if (fullName === '') {
+            delete cloudData.accountMappings[code];
+        } else {
+            cloudData.accountMappings[code] = fullName;
+        }
+        saveToCloud();
+    }
+
+    function removeAccountMapping(code) {
+        if (!confirm(`確定要刪除代號【${code}】的對照紀錄嗎？`)) return;
+        if (cloudData.accountMappings && cloudData.accountMappings[code] !== undefined) {
+            delete cloudData.accountMappings[code];
+            saveToCloud();
+            renderAdminUI();
+        }
     }
 
     function syncDevicesFromDOM() {
