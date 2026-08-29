@@ -992,6 +992,7 @@
     let fishingCdData = {}; 
     let rainbowCdData = {}; 
     let helpListData = {}; // 🤝 待互助清單資料
+    let accountMappingsData = {}; // 🏷️ 儲存後台帳號對照表
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -1133,6 +1134,8 @@
 
                 yesterdayCompleteTimes = normalizeObjectKeys(data.yesterdayCompleteTimes);
                 noQuestAccounts = normalizeObjectKeys(data.noQuestAccounts);
+                // 讀取帳號對照表
+            accountMappingsData = normalizeObjectKeys(data.accountMappings);
             }
 
             initTable();
@@ -1567,6 +1570,23 @@
             arrow.innerText = '▼ 展開';
         }
     }
+    
+    // 🏷️ 取得顯示名稱 (若有後台對照表設定則顯示：代號 (完整名稱)，否則顯示原代號)
+    function getDisplayName(accName) {
+        const accKey = String(accName);
+        if (accountMappingsData && accountMappingsData[accKey]) {
+            return `${accKey} (${accountMappingsData[accKey]})`;
+        }
+        return accKey;
+    }
+    // 📋 複製專用：僅完整名稱 (無對照則退回原代號)
+function getRealAccountName(accName) {
+    const accKey = String(accName);
+    if (accountMappingsData && accountMappingsData[accKey]) {
+        return accountMappingsData[accKey];
+    }
+    return accKey;
+}
 
     function renderAdPanel() {
         const grid = document.getElementById('adGridArea');
@@ -1584,9 +1604,14 @@
             if (isWatched) watchedCount++;
 
             const chip = document.createElement('div');
-            // 🤝 正確套用 .help-active Class
             chip.className = `ad-chip ${isWatched ? 'watched' : ''} ${isHelpActive ? 'help-active' : ''}`;
-            chip.innerText = accName;
+            
+            // 💡 關鍵修改：如果是待互助狀態且有對照名稱，顯示對應完整名稱
+            if (isHelpActive) {
+                chip.innerText = getDisplayName(accName);
+            } else {
+                chip.innerText = accName;
+            }
 
             // 💡 點擊/雙擊/防衝突機制
             let tapCount = 0;
@@ -1656,81 +1681,101 @@
             helpListData[accKey] = true; 
         }
         saveDataToCloud();
-        renderAdPanel(); // 即時更新廣告晶片的橘框
+        renderAdPanel(); // 即時更新廣告晶片的橘框與名稱
         renderHelpOverview(); // 即時更新懸浮按鈕與 Modal 畫面
     }
 
-    // 🤝 解除/移除待互助清單 (長按晶片觸發)
-    function removeHelpList(accName) {
-        const accKey = String(accName);
-        delete helpListData[accKey]; 
-        saveDataToCloud();
-        renderAdPanel();
-        renderHelpOverview(); 
-    }
-
-    // 🤝 渲染待互助清單總覽 (架構完全對齊彩虹冷卻)
+    // 🤝 渲染待互助清單
     function renderHelpOverview() {
         const box = document.getElementById('helpOverviewBox');
         const openBtn = document.getElementById('helpModalOpenBtn');
         if (!box || !openBtn) return;
-        box.innerHTML = '';
 
-        let helpListAccounts = Object.keys(helpListData).filter(acc => helpListData[acc] === true);
-        helpListAccounts.sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
+        const helpKeys = Object.keys(helpListData).filter(k => helpListData[k]);
+        openBtn.innerText = `🤝 待互助清單 (${helpKeys.length})`;
 
-        // 即時更新懸浮按鈕人數
-        openBtn.innerText = `🤝 待互助清單 (${helpListAccounts.length})`;
-
-        if (helpListAccounts.length === 0) {
-            box.innerHTML = `<span style="font-size: 12px; color: #a0aec0;">目前沒有待互助的角色</span>`;
+        if (helpKeys.length === 0) {
+            box.innerHTML = '<span style="font-size: 12px; color: #a0aec0;">目前沒有待互助的角色</span>';
             return;
         }
 
-        helpListAccounts.forEach(accName => {
+        box.innerHTML = '';
+        helpKeys.sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true })).forEach(accKey => {
             const chip = document.createElement('div');
-            chip.className = `quest-chip in-progress`;
-            chip.style.display = 'inline-flex';
-            chip.style.width = 'auto';
-            chip.style.margin = '2px';
-            chip.style.fontSize = '13px';
-            chip.style.padding = '5px 10px';
-            chip.style.background = '#ffedd5';
-            chip.style.color = '#c2410c';
-            chip.style.borderColor = '#fdba74';
-            chip.innerHTML = `<span>${accName}</span><span style="font-size: 11px; color: #c2410c; font-weight: bold; margin-left:4px;">(待互助)</span>`;
+            chip.className = 'ad-chip help-active';
+            chip.style.borderColor = '#dd6b20';
+            chip.style.background = '#fffaf0';
+            
+            // 💡 使用 getDisplayName 顯示代號與完整名稱
+            chip.innerText = getDisplayName(accKey);
+// 💡 點擊複製：僅複製完整名稱 (例如: realfarm_user38)
+    chip.addEventListener('click', () => {
+        const textToCopy = getRealAccountName(accKey);
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast(`已複製：${textToCopy}`);
+            }).catch(err => {
+                fallbackCopyText(textToCopy);
+            });
+        } else {
+            fallbackCopyText(textToCopy);
+        }
+    });
 
-            // 💡 點擊：切換/移除
-            chip.onclick = () => {
-                toggleHelpList(accName);
-            };
-
-            // 💡 長按晶片：從待互助清單中解除 (完全對齊彩虹冷卻長按移除機制)
+            // 💡 2. 長按（手機）或右鍵（電腦）取消待互助狀態
             let pressTimer = null;
             chip.addEventListener('touchstart', (e) => {
                 pressTimer = setTimeout(() => {
                     e.preventDefault();
-                    removeHelpList(accName);
+                    toggleHelpList(accKey);
                 }, 600);
             });
             chip.addEventListener('touchend', () => clearTimeout(pressTimer));
             chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
             chip.addEventListener('mousedown', (e) => {
-                if (e.button === 2) {
+                if (e.button === 2) { // 右鍵點擊
                     e.preventDefault();
-                    removeHelpList(accName);
+                    toggleHelpList(accKey);
                     return;
                 }
                 pressTimer = setTimeout(() => {
-                    removeHelpList(accName);
+                    toggleHelpList(accKey);
                 }, 600);
             });
             chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
             chip.addEventListener('contextmenu', (e) => e.preventDefault());
-
+            
             box.appendChild(chip);
         });
+    }
+    // 📋 複製成功提示訊息
+    function showToast(message) {
+        let toast = document.getElementById('toastMsg');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastMsg';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: #fff;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 13px;
+                z-index: 2000;
+                transition: opacity 0.3s;
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.innerText = message;
+        toast.style.opacity = '1';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+        }, 1500);
     }
 
     function triggerRainbowCooldown(accName) {
