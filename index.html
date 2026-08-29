@@ -189,11 +189,19 @@
             cursor: pointer;
             display: inline-flex;
             align-items: center;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
         }
         .ad-chip.watched {
             background: #c6f6d5;
             color: #22543d;
             border-color: #9ae6b4;
+        }
+      
+        /* 🤝 廣告晶片處於待互助狀態時的樣式 */
+        .ad-chip.help-active {
+            border: 2px solid #dd6b20 !important;
+            box-shadow: 0 0 4px rgba(221, 107, 32, 0.4) !important;
         }
 
         /* 💡 底部按鈕群組區塊（結算與重設） */
@@ -1571,51 +1579,52 @@
         sortedAdAccounts.forEach(accName => {
             const accKey = String(accName);
             const isWatched = !!adWatchedData[accKey];
+            const isHelpActive = !!helpListData[accKey]; // 🤝 判斷是否處於待互助狀態
+            
             if (isWatched) watchedCount++;
 
             const chip = document.createElement('div');
-            chip.className = `ad-chip ${isWatched ? 'watched' : ''}`;
+            // 🤝 正確套用 .help-active Class
+            chip.className = `ad-chip ${isWatched ? 'watched' : ''} ${isHelpActive ? 'help-active' : ''}`;
             chip.innerText = accName;
 
-            // 💡 點擊：切換廣告狀態
-            chip.onclick = () => {
-                adWatchedData[accKey] = !adWatchedData[accKey];
-                saveDataToCloud();
-                renderAdPanel();
-                if (document.getElementById('fishModalOverlay').classList.contains('show')) {
-                    renderFishModalContent();
+            // 💡 點擊/雙擊/防衝突機制
+            let tapCount = 0;
+            let tapTimer = null;
+
+            chip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                tapCount++;
+
+                if (tapCount === 1) {
+                    tapTimer = setTimeout(() => {
+                        // 判定單擊：切換廣告狀態
+                        adWatchedData[accKey] = !adWatchedData[accKey];
+                        saveDataToCloud();
+                        renderAdPanel();
+                        if (document.getElementById('fishModalOverlay').classList.contains('show')) {
+                            renderFishModalContent();
+                        }
+                        tapCount = 0;
+                    }, 250);
+                } else if (tapCount === 2) {
+                    // 判定雙擊：切換待互助清單狀態
+                    clearTimeout(tapTimer);
+                    toggleHelpList(accKey);
+                    tapCount = 0;
                 }
-            };
+            });
 
-            // 💡 雙擊：加入待互助清單
-            chip.ondblclick = () => {
-                toggleHelpList(accKey);
-            };
-
+            // 💡 長按：觸發彩虹冷卻
             let pressTimer = null;
-            let touchStartTime = 0;
-
             chip.addEventListener('touchstart', (e) => {
-                touchStartTime = Date.now();
                 pressTimer = setTimeout(() => {
                     e.preventDefault();
                     triggerRainbowCooldown(accKey);
+                    tapCount = 0;
                 }, 600);
             });
-            
-            chip.addEventListener('touchend', (e) => {
-                clearTimeout(pressTimer);
-                // 手機端短時間點擊兩次視為雙擊，加入待互助清單
-                const touchDuration = Date.now() - touchStartTime;
-                if (touchDuration < 300) {
-                    if (chip.dataset.lastTap && Date.now() - chip.dataset.lastTap < 400) {
-                        e.preventDefault();
-                        toggleHelpList(accKey);
-                    }
-                    chip.dataset.lastTap = Date.now();
-                }
-            });
-
+            chip.addEventListener('touchend', () => clearTimeout(pressTimer));
             chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
             chip.addEventListener('mousedown', (e) => {
@@ -1626,6 +1635,7 @@
                 }
                 pressTimer = setTimeout(() => {
                     triggerRainbowCooldown(accKey);
+                    tapCount = 0;
                 }, 600);
             });
             chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
@@ -1637,19 +1647,29 @@
         document.getElementById('adPanelTitle').innerText = `📺 今日廣告賺 R 幣記錄 (已完成: ${watchedCount}/${totalCount})`;
     }
 
-    // 🤝 切換待互助清單狀態
+    // 🤝 切換待互助清單狀態（包含新增與消除）
     function toggleHelpList(accName) {
         const accKey = String(accName);
         if (helpListData[accKey]) {
             delete helpListData[accKey];
         } else {
-            helpListData[accKey] = true;
+            helpListData[accKey] = true; 
         }
         saveDataToCloud();
-        renderHelpOverview();
+        renderAdPanel(); // 即時更新廣告晶片的橘框
+        renderHelpOverview(); // 即時更新懸浮按鈕與 Modal 畫面
     }
 
-    // 🤝 渲染待互助清單總覽（改為長按才解除）
+    // 🤝 解除/移除待互助清單 (長按晶片觸發)
+    function removeHelpList(accName) {
+        const accKey = String(accName);
+        delete helpListData[accKey]; 
+        saveDataToCloud();
+        renderAdPanel();
+        renderHelpOverview(); 
+    }
+
+    // 🤝 渲染待互助清單總覽 (架構完全對齊彩虹冷卻)
     function renderHelpOverview() {
         const box = document.getElementById('helpOverviewBox');
         const openBtn = document.getElementById('helpModalOpenBtn');
@@ -1659,6 +1679,7 @@
         let helpListAccounts = Object.keys(helpListData).filter(acc => helpListData[acc] === true);
         helpListAccounts.sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
 
+        // 即時更新懸浮按鈕人數
         openBtn.innerText = `🤝 待互助清單 (${helpListAccounts.length})`;
 
         if (helpListAccounts.length === 0) {
@@ -1679,12 +1700,17 @@
             chip.style.borderColor = '#fdba74';
             chip.innerHTML = `<span>${accName}</span><span style="font-size: 11px; color: #c2410c; font-weight: bold; margin-left:4px;">(待互助)</span>`;
 
-            // 💡 長按晶片：從待互助清單中解除
+            // 💡 點擊：切換/移除
+            chip.onclick = () => {
+                toggleHelpList(accName);
+            };
+
+            // 💡 長按晶片：從待互助清單中解除 (完全對齊彩虹冷卻長按移除機制)
             let pressTimer = null;
             chip.addEventListener('touchstart', (e) => {
                 pressTimer = setTimeout(() => {
                     e.preventDefault();
-                    toggleHelpList(accName);
+                    removeHelpList(accName);
                 }, 600);
             });
             chip.addEventListener('touchend', () => clearTimeout(pressTimer));
@@ -1693,11 +1719,11 @@
             chip.addEventListener('mousedown', (e) => {
                 if (e.button === 2) {
                     e.preventDefault();
-                    toggleHelpList(accName);
+                    removeHelpList(accName);
                     return;
                 }
                 pressTimer = setTimeout(() => {
-                    toggleHelpList(accName);
+                    removeHelpList(accName);
                 }, 600);
             });
             chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
@@ -2280,7 +2306,7 @@
         activeDateStr = nextDayStr; 
         adWatchedData = {}; 
         rainbowCdData = {}; 
-        helpListData = {}; // 結算時清空待互助清單
+        helpListData = {}; // 🤝 結算時清空待互助清單
         alertedRainbowSet.clear();
         noQuestAccounts = {}; 
         selectedGroupNames = new Set(['R少']);
