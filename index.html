@@ -75,7 +75,7 @@
         }
         .btn-fish-modal-open:hover { background-color: #2c7a7b; }
 
-        /* 🌈 懸浮彩虹冷卻追蹤按鈕樣式（固定於右上角釣魚按鈕下方） */
+        /* 🌈 懸浮彩虹冷卻追蹤按鈕樣式 */
         .btn-rainbow-modal-open {
             position: fixed;
             top: 48px;
@@ -92,6 +92,24 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
         .btn-rainbow-modal-open:hover { opacity: 0.9; }
+
+        /* 🤝 懸浮待互助清單按鈕樣式（固定於彩虹按鈕下方） */
+        .btn-help-modal-open {
+            position: fixed;
+            top: 84px;
+            right: 12px;
+            background: linear-gradient(135deg, #f6ad55, #ed8936);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .btn-help-modal-open:hover { opacity: 0.9; }
 
         .hint-bar {
             background: #2d3748;
@@ -572,6 +590,57 @@
             overflow-y: auto;
         }
 
+        /* 🤝 待互助清單 Modal 視窗樣式 */
+        .help-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .help-modal-overlay.show { display: flex; }
+        .help-modal-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modalPopup 0.2s ease-in-out;
+        }
+        .help-modal-header {
+            background: #fffaf0;
+            padding: 12px 16px;
+            border-bottom: 1px solid #feebc8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .help-modal-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #dd6b20;
+        }
+        .help-modal-close {
+            background: none;
+            border: none;
+            color: #dd6b20;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .help-modal-body {
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
         .fish-group-section {
             margin-bottom: 12px;
         }
@@ -726,11 +795,14 @@
 </head>
 <body>
 
-<!-- 🎣 懸浮釣魚追蹤按鈕（已固定於右上角） -->
+<!-- 🎣 懸浮釣魚追蹤按鈕 -->
 <button class="btn-fish-modal-open" onclick="openFishModal()">🎣 釣魚冷卻追蹤</button>
 
-<!-- 🌈 懸浮彩虹冷卻追蹤按鈕（固定於釣魚按鈕下方，帶有即時追蹤數量） -->
+<!-- 🌈 懸浮彩虹冷卻追蹤按鈕 -->
 <button class="btn-rainbow-modal-open" id="rainbowModalOpenBtn" onclick="openRainbowModal()">🌈 彩虹冷卻追蹤 (0)</button>
+
+<!-- 🤝 懸浮待互助清單按鈕 -->
+<button class="btn-help-modal-open" id="helpModalOpenBtn" onclick="openHelpModal()">🤝 待互助清單 (0)</button>
 
 <div class="top-nav-bar">
     <a href="admin.html" class="admin-link">⚙️ 前往後台管理中心</a>
@@ -750,7 +822,9 @@
         <span id="adToggleArrow">▼ 展開</span>
     </div>
     <div class="collapsible-content-body" id="adContentBody">
-        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">💡 點擊：切換今日是否已看完廣告 | <strong>長按：加入彩虹冷卻 (19分30秒)</strong></div>
+        <div style="font-size: 11px; color: #718096; margin-bottom: 6px;">
+            💡 點擊：切換是否看完 | <strong>長按：加入彩虹冷卻 (19分30秒)</strong> | <strong style="color: #dd6b20;">雙擊：加入待互助清單</strong>
+        </div>
         <div class="ad-grid" id="adGridArea"></div>
     </div>
 </div>
@@ -818,7 +892,7 @@
     </div>
 </div>
 
-<!-- 🌈 彩虹冷卻總覽 Modal 視窗（可點擊背景關閉） -->
+<!-- 🌈 彩虹冷卻總覽 Modal 視窗 -->
 <div class="rainbow-modal-overlay" id="rainbowModalOverlay" onclick="handleRainbowOverlayClick(event)">
     <div class="rainbow-modal-card">
         <div class="rainbow-modal-header">
@@ -829,6 +903,22 @@
             <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">💡 點擊：重新倒數 | <strong>長按：解除／清除冷卻</strong></div>
             <div class="rainbow-box" id="rainbowOverviewBox" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
                 <span style="font-size: 12px; color: #a0aec0;">目前沒有進行中的彩虹冷卻</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🤝 待互助清單 Modal 視窗 -->
+<div class="help-modal-overlay" id="helpModalOverlay" onclick="handleHelpOverlayClick(event)">
+    <div class="help-modal-card">
+        <div class="help-modal-header">
+            <span class="help-modal-title">🤝 待互助清單</span>
+            <button class="help-modal-close" onclick="closeHelpModal()">&times;</button>
+        </div>
+        <div class="help-modal-body">
+            <div style="font-size: 11px; color: #718096; margin-bottom: 8px;">💡 點擊：從廣告清單雙擊加入 | <strong>長按晶片：從待互助清單中解除</strong></div>
+            <div class="help-box" id="helpOverviewBox" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                <span style="font-size: 12px; color: #a0aec0;">目前沒有待互助的角色</span>
             </div>
         </div>
     </div>
@@ -893,6 +983,7 @@
     let coinData = {}; 
     let fishingCdData = {}; 
     let rainbowCdData = {}; 
+    let helpListData = {}; // 🤝 待互助清單資料
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -904,7 +995,7 @@
     
     const FISHING_CD_DURATION = 60 * 60 * 1000;
     const FISHING_CD_OFFSET = 45 * 60 * 1000;
-    const RAINBOW_CD_DURATION = (19 * 60 + 30) * 1000; // 19分30秒
+    const RAINBOW_CD_DURATION = (19 * 60 + 30) * 1000;
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -922,6 +1013,7 @@
             }
             checkReadyFishModalTimer();
             renderRainbowOverview();
+            renderHelpOverview();
         }, 1000);
     });
 
@@ -1005,6 +1097,7 @@
                 coinData = {};
                 fishingCdData = {};
                 rainbowCdData = {};
+                helpListData = {};
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
                 saveDataToCloud();
@@ -1028,6 +1121,7 @@
                 coinData = normalizeObjectKeys(data.coins);
                 fishingCdData = normalizeObjectKeys(data.fishingCd); 
                 rainbowCdData = normalizeObjectKeys(data.rainbowCd); 
+                helpListData = normalizeObjectKeys(data.helpList); // 🤝 讀取雲端待互助清單
 
                 yesterdayCompleteTimes = normalizeObjectKeys(data.yesterdayCompleteTimes);
                 noQuestAccounts = normalizeObjectKeys(data.noQuestAccounts);
@@ -1038,6 +1132,7 @@
             renderQueuesBySelection();
             renderAdPanel(); 
             renderRainbowOverview(); 
+            renderHelpOverview(); // 🤝 渲染待互助清單
             updateDateLabels(); 
             
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
@@ -1255,6 +1350,7 @@
             coins: normalizeObjectKeys(coinData),
             fishingCd: normalizeObjectKeys(fishingCdData),
             rainbowCd: normalizeObjectKeys(rainbowCdData),
+            helpList: normalizeObjectKeys(helpListData), // 🤝 儲存待互助清單
             yesterdayCompleteTimes: normalizeObjectKeys(yesterdayCompleteTimes),
             noQuestAccounts: normalizeObjectKeys(noQuestAccounts),
             today: {},
@@ -1314,6 +1410,22 @@
     function handleRainbowOverlayClick(event) {
         if (event.target === document.getElementById('rainbowModalOverlay')) {
             closeRainbowModal();
+        }
+    }
+
+    // 🤝 待互助 Modal 控制函數
+    function openHelpModal() {
+        document.getElementById('helpModalOverlay').classList.add('show');
+        renderHelpOverview();
+    }
+
+    function closeHelpModal() {
+        document.getElementById('helpModalOverlay').classList.remove('show');
+    }
+
+    function handleHelpOverlayClick(event) {
+        if (event.target === document.getElementById('helpModalOverlay')) {
+            closeHelpModal();
         }
     }
 
@@ -1465,6 +1577,7 @@
             chip.className = `ad-chip ${isWatched ? 'watched' : ''}`;
             chip.innerText = accName;
 
+            // 💡 點擊：切換廣告狀態
             chip.onclick = () => {
                 adWatchedData[accKey] = !adWatchedData[accKey];
                 saveDataToCloud();
@@ -1474,15 +1587,35 @@
                 }
             };
 
+            // 💡 雙擊：加入待互助清單
+            chip.ondblclick = () => {
+                toggleHelpList(accKey);
+            };
+
             let pressTimer = null;
+            let touchStartTime = 0;
 
             chip.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
                 pressTimer = setTimeout(() => {
                     e.preventDefault();
                     triggerRainbowCooldown(accKey);
                 }, 600);
             });
-            chip.addEventListener('touchend', () => clearTimeout(pressTimer));
+            
+            chip.addEventListener('touchend', (e) => {
+                clearTimeout(pressTimer);
+                // 手機端短時間點擊兩次視為雙擊，加入待互助清單
+                const touchDuration = Date.now() - touchStartTime;
+                if (touchDuration < 300) {
+                    if (chip.dataset.lastTap && Date.now() - chip.dataset.lastTap < 400) {
+                        e.preventDefault();
+                        toggleHelpList(accKey);
+                    }
+                    chip.dataset.lastTap = Date.now();
+                }
+            });
+
             chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
             chip.addEventListener('mousedown', (e) => {
@@ -1502,6 +1635,76 @@
         });
 
         document.getElementById('adPanelTitle').innerText = `📺 今日廣告賺 R 幣記錄 (已完成: ${watchedCount}/${totalCount})`;
+    }
+
+    // 🤝 切換待互助清單狀態
+    function toggleHelpList(accName) {
+        const accKey = String(accName);
+        if (helpListData[accKey]) {
+            delete helpListData[accKey];
+        } else {
+            helpListData[accKey] = true;
+        }
+        saveDataToCloud();
+        renderHelpOverview();
+    }
+
+    // 🤝 渲染待互助清單總覽（改為長按才解除）
+    function renderHelpOverview() {
+        const box = document.getElementById('helpOverviewBox');
+        const openBtn = document.getElementById('helpModalOpenBtn');
+        if (!box || !openBtn) return;
+        box.innerHTML = '';
+
+        let helpListAccounts = Object.keys(helpListData).filter(acc => helpListData[acc] === true);
+        helpListAccounts.sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
+
+        openBtn.innerText = `🤝 待互助清單 (${helpListAccounts.length})`;
+
+        if (helpListAccounts.length === 0) {
+            box.innerHTML = `<span style="font-size: 12px; color: #a0aec0;">目前沒有待互助的角色</span>`;
+            return;
+        }
+
+        helpListAccounts.forEach(accName => {
+            const chip = document.createElement('div');
+            chip.className = `quest-chip in-progress`;
+            chip.style.display = 'inline-flex';
+            chip.style.width = 'auto';
+            chip.style.margin = '2px';
+            chip.style.fontSize = '13px';
+            chip.style.padding = '5px 10px';
+            chip.style.background = '#ffedd5';
+            chip.style.color = '#c2410c';
+            chip.style.borderColor = '#fdba74';
+            chip.innerHTML = `<span>${accName}</span><span style="font-size: 11px; color: #c2410c; font-weight: bold; margin-left:4px;">(待互助)</span>`;
+
+            // 💡 長按晶片：從待互助清單中解除
+            let pressTimer = null;
+            chip.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    toggleHelpList(accName);
+                }, 600);
+            });
+            chip.addEventListener('touchend', () => clearTimeout(pressTimer));
+            chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+            chip.addEventListener('mousedown', (e) => {
+                if (e.button === 2) {
+                    e.preventDefault();
+                    toggleHelpList(accName);
+                    return;
+                }
+                pressTimer = setTimeout(() => {
+                    toggleHelpList(accName);
+                }, 600);
+            });
+            chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
+            chip.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            box.appendChild(chip);
+        });
     }
 
     function triggerRainbowCooldown(accName) {
@@ -1581,12 +1784,10 @@
                 chip.innerHTML = `<span>${item.name}</span><span style="font-size: 11px; color: #e11d48; font-weight: bold; margin-left:4px;">${timeStr}</span>`;
             }
             
-            // 💡 點擊：重新倒數
             chip.onclick = () => {
                 triggerRainbowCooldown(item.name);
             };
 
-            // 💡 長按：解除／清除冷卻
             let pressTimer = null;
             chip.addEventListener('touchstart', (e) => {
                 pressTimer = setTimeout(() => {
@@ -2079,6 +2280,7 @@
         activeDateStr = nextDayStr; 
         adWatchedData = {}; 
         rainbowCdData = {}; 
+        helpListData = {}; // 結算時清空待互助清單
         alertedRainbowSet.clear();
         noQuestAccounts = {}; 
         selectedGroupNames = new Set(['R少']);
@@ -2089,6 +2291,7 @@
         renderQueuesBySelection();
         renderAdPanel();
         renderRainbowOverview();
+        renderHelpOverview();
         updateDateLabels();
         updateStats();
         updatePendingOverview();
