@@ -264,9 +264,17 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
+        /* 調整選單與排序按鈕並排容器 */
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
         .multiselect-dropdown {
             position: relative;
-            margin-bottom: 8px;
+            flex: 1;
         }
 
         .dropdown-btn {
@@ -314,6 +322,21 @@
 
         .dropdown-item:hover { background: #f7fafc; }
         .dropdown-item input { cursor: pointer; }
+
+        .sort-toggle-label {
+            font-size: 12px;
+            color: #4a5568;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            background: #edf2f7;
+            padding: 7px 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+        }
 
         .visible-queue-group {
             margin-top: 8px;
@@ -849,12 +872,19 @@
 </div>
 
 <div class="group-container" id="groupContainer">
-    <div class="multiselect-dropdown">
-        <button class="dropdown-btn" onclick="toggleDropdownMenu()">
-            <span id="dropdownBtnText">🔍 選擇要顯示的角色佇列...</span>
-            <span>▼</span>
-        </button>
-        <div class="dropdown-menu" id="dropdownMenu"></div>
+    <div class="control-row">
+        <div class="multiselect-dropdown">
+            <button class="dropdown-btn" onclick="toggleDropdownMenu()">
+                <span id="dropdownBtnText">🔍 選擇要顯示的角色佇列...</span>
+                <span>▼</span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu"></div>
+        </div>
+        <!-- 🪙 依R幣數量排序開關 (少→多) -->
+        <label class="sort-toggle-label">
+            <input type="checkbox" id="sortByCoinToggle" onchange="toggleCoinSort(this.checked)" style="cursor: pointer;">
+            🪙 依R幣排序 (少→多)
+        </label>
     </div>
     <div id="displayQueuesArea"></div>
 </div>
@@ -1143,7 +1173,7 @@
                 yesterdayCompleteTimes = normalizeObjectKeys(data.yesterdayCompleteTimes);
                 noQuestAccounts = normalizeObjectKeys(data.noQuestAccounts);
                 // 讀取帳號對照表
-            accountMappingsData = normalizeObjectKeys(data.accountMappings);
+                accountMappingsData = normalizeObjectKeys(data.accountMappings);
             }
 
             initTable();
@@ -1447,24 +1477,25 @@
             closeHelpModal();
         }
     }
+
     // ➕ 離開對話框自動觸發釣魚冷卻
-	function triggerFishCooldownByInput() {
-	    const inputEl = document.getElementById('customFishInput');
-	    if (!inputEl) return;
-	    
-	    const accKey = inputEl.value.trim();
-	    
-	    // 如果沒有輸入內容，離開對話框時直接忽略，不跳警告
-	    if (!accKey) return;
-	
-	    // 觸發原始冷卻機制（60分鐘）
-	    fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
-	    gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
-	
-	    // 清空輸入框並刷新 Modal 內容
-	    inputEl.value = '';
-	    renderFishModalContent();
-	}
+    function triggerFishCooldownByInput() {
+        const inputEl = document.getElementById('customFishInput');
+        if (!inputEl) return;
+        
+        const accKey = inputEl.value.trim();
+        
+        // 如果沒有輸入內容，離開對話框時直接忽略，不跳警告
+        if (!accKey) return;
+
+        // 觸發原始冷卻機制（60分鐘）
+        fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
+        gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
+
+        // 清空輸入框並刷新 Modal 內容
+        inputEl.value = '';
+        renderFishModalContent();
+    }
 
     function renderFishModalContent() {
         const container = document.getElementById('fishModalContentContainer');
@@ -1605,14 +1636,15 @@
         }
         return accKey;
     }
+
     // 📋 複製專用：僅完整名稱 (無對照則退回原代號)
-function getRealAccountName(accName) {
-    const accKey = String(accName);
-    if (accountMappingsData && accountMappingsData[accKey]) {
-        return accountMappingsData[accKey];
+    function getRealAccountName(accName) {
+        const accKey = String(accName);
+        if (accountMappingsData && accountMappingsData[accKey]) {
+            return accountMappingsData[accKey];
+        }
+        return accKey;
     }
-    return accKey;
-}
 
     function renderAdPanel() {
         const grid = document.getElementById('adGridArea');
@@ -1711,6 +1743,25 @@ function getRealAccountName(accName) {
         renderHelpOverview(); // 即時更新懸浮按鈕與 Modal 畫面
     }
 
+    // 🤝 備用剪貼簿複製備援機制
+    function fallbackCopyText(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast(`已複製：${text}`);
+        } catch (err) {
+            alert(`複製失敗，請手動複製：${text}`);
+        }
+        document.body.removeChild(textArea);
+    }
+
     // 🤝 渲染待互助清單
     function renderHelpOverview() {
         const box = document.getElementById('helpOverviewBox');
@@ -1734,20 +1785,21 @@ function getRealAccountName(accName) {
             
             // 💡 使用 getDisplayName 顯示代號與完整名稱
             chip.innerText = getDisplayName(accKey);
-// 💡 點擊複製：僅複製完整名稱 (例如: realfarm_user38)
-    chip.addEventListener('click', () => {
-        const textToCopy = getRealAccountName(accKey);
-        
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                showToast(`已複製：${textToCopy}`);
-            }).catch(err => {
-                fallbackCopyText(textToCopy);
+
+            // 💡 點擊複製：僅複製完整名稱 (例如: realfarm_user38)
+            chip.addEventListener('click', () => {
+                const textToCopy = getRealAccountName(accKey);
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showToast(`已複製：${textToCopy}`);
+                    }).catch(err => {
+                        fallbackCopyText(textToCopy);
+                    });
+                } else {
+                    fallbackCopyText(textToCopy);
+                }
             });
-        } else {
-            fallbackCopyText(textToCopy);
-        }
-    });
 
             // 💡 2. 長按（手機）或右鍵（電腦）取消待互助狀態
             let pressTimer = null;
@@ -1776,6 +1828,7 @@ function getRealAccountName(accName) {
             box.appendChild(chip);
         });
     }
+
     // 📋 複製成功提示訊息
     function showToast(message) {
         let toast = document.getElementById('toastMsg');
@@ -1943,32 +1996,54 @@ function getRealAccountName(accName) {
         else btnText.innerText = `📋 已顯示 ${selectedGroupNames.size} 個佇列：${Array.from(selectedGroupNames).join(', ')}`;
     }
 
+    // 全局控制變數
+    let sortByCoin = false;
+    
+    // 切換排序狀態與重新渲染
+    function toggleCoinSort(enabled) {
+        sortByCoin = enabled;
+        renderQueuesBySelection();
+    }
+    
+    // 完整佇列渲染函數
     function renderQueuesBySelection() {
         const area = document.getElementById('displayQueuesArea');
         area.innerHTML = '';
         sortableInstances.forEach(inst => inst.destroy());
         sortableInstances = [];
-
+    
         const groupContainer = document.getElementById('groupContainer');
         if (selectedGroupNames.size > 0) {
             groupContainer.classList.add('has-queues');
         } else {
             groupContainer.classList.remove('has-queues');
         }
-
+    
         getSortedGroupNames().forEach(groupName => {
             if (!selectedGroupNames.has(groupName)) return;
             const groupWrapper = document.createElement('div');
             groupWrapper.className = 'visible-queue-group';
             const title = document.createElement('div');
             title.className = 'group-title-tag';
-            title.innerText = `🎯 ${groupName}`;
+            title.innerText = `🎯 ${groupName} ${sortByCoin ? '(R幣少→多)' : ''}`;
             groupWrapper.appendChild(title);
             const queueBox = document.createElement('div');
             queueBox.className = 'queue-box';
             queueBox.dataset.group = groupName;
+    
             if (accountGroups[groupName]) {
-                accountGroups[groupName].forEach(acc => {
+                let accountsToRender = [...accountGroups[groupName]];
+    
+                // 🪙 R幣由少到多排序 (coinA - coinB)
+                if (sortByCoin) {
+                    accountsToRender.sort((a, b) => {
+                        let coinA = Number(coinData[String(a)]) || 0;
+                        let coinB = Number(coinData[String(b)]) || 0;
+                        return coinA - coinB;
+                    });
+                }
+    
+                accountsToRender.forEach(acc => {
                     const accKey = String(acc);
                     const btn = document.createElement('button');
                     btn.className = 'queue-btn';
@@ -1976,17 +2051,23 @@ function getRealAccountName(accName) {
                     if (noQuestAccounts[accKey]) {
                         btn.classList.add('no-quest');
                     }
-
+    
                     let yestTimeText = yesterdayCompleteTimes[accKey] || '';
-                    if (yestTimeText) {
-                        btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${yestTimeText})</span>`;
+                    let coinVal = Number(coinData[accKey]) || 0;
+    
+                    let extraInfo = [];
+                    if (yestTimeText) extraInfo.push(yestTimeText);
+                    if (sortByCoin) extraInfo.push(`🪙${coinVal}`);
+    
+                    if (extraInfo.length > 0) {
+                        btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${extraInfo.join(' | ')})</span>`;
                     } else {
                         btn.innerText = acc;
                     }
-
+    
                     btn.dataset.name = accKey;
                     btn.dataset.group = groupName;
-
+    
                     btn.onclick = () => {
                         if (noQuestAccounts[accKey]) return; 
                         const targetZone = document.querySelector('.drop-zone.today-zone.active');
@@ -2001,7 +2082,7 @@ function getRealAccountName(accName) {
                         updatePendingOverview();
                         updateQueueAssignedStatus();
                     };
-
+    
                     let pressTimer = null;
                     btn.addEventListener('touchstart', (e) => {
                         pressTimer = setTimeout(() => {
@@ -2011,22 +2092,25 @@ function getRealAccountName(accName) {
                     });
                     btn.addEventListener('touchend', () => clearTimeout(pressTimer));
                     btn.addEventListener('touchmove', () => clearTimeout(pressTimer));
-
+    
                     btn.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
                         toggleNoQuestStatus(accKey);
                     });
-
+    
                     queueBox.appendChild(btn);
                 });
             }
             groupWrapper.appendChild(queueBox);
             area.appendChild(groupWrapper);
+    
+            // 拖曳套件：開啟R幣排序時停用拖曳，維護自訂排序不被覆蓋
             const sortable = new Sortable(queueBox, {
                 group: 'shared-accounts', 
                 animation: 150,
                 delay: 150,
                 delayOnTouchOnly: true,
+                disabled: sortByCoin, 
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
                 onEnd: function () { syncAllGroupsFromDOM(); }
