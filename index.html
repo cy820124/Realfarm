@@ -885,6 +885,14 @@
         <div class="modal-body">
             <div>
                 <div id="fishModalContentContainer"></div>
+                
+                <!-- ➕ 優化：離開輸入框 (onblur) 或按 Enter (失焦) 即自動觸發冷卻 -->
+                <div style="margin-top: 15px; text-align: center;">
+                    <input type="text" id="customFishInput" placeholder="直接輸入帳號觸發冷卻" 
+                           onblur="triggerFishCooldownByInput()"
+                           onkeypress="if(event.key === 'Enter') this.blur()"
+                           style="width: 100%; max-width: 280px; padding: 8px 12px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
+                </div>
             </div>
             <div>
                 <div class="modal-timer-card" id="modalTimerCard">
@@ -1439,6 +1447,24 @@
             closeHelpModal();
         }
     }
+    // ➕ 離開對話框自動觸發釣魚冷卻
+	function triggerFishCooldownByInput() {
+	    const inputEl = document.getElementById('customFishInput');
+	    if (!inputEl) return;
+	    
+	    const accKey = inputEl.value.trim();
+	    
+	    // 如果沒有輸入內容，離開對話框時直接忽略，不跳警告
+	    if (!accKey) return;
+	
+	    // 觸發原始冷卻機制（60分鐘）
+	    fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
+	    gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
+	
+	    // 清空輸入框並刷新 Modal 內容
+	    inputEl.value = '';
+	    renderFishModalContent();
+	}
 
     function renderFishModalContent() {
         const container = document.getElementById('fishModalContentContainer');
