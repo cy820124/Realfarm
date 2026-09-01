@@ -43,6 +43,15 @@
             margin-bottom: 8px;
         }
 
+        /* 🪙 R幣自訂圖示樣式 */
+        .r-coin-icon {
+            width: 1.2em;
+            height: 1.2em;
+            vertical-align: -0.2em;
+            object-fit: contain;
+            display: inline-block;
+        }
+
         .top-nav-bar {
             display: flex;
             justify-content: space-between;
@@ -352,6 +361,9 @@
             color: #4a5568;
             margin-bottom: 4px;
             padding-left: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .queue-box {
@@ -390,6 +402,9 @@
             font-size: 11px;
             color: #718096;
             font-weight: normal;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
         }
 
         .queue-btn.assigned {
@@ -883,7 +898,7 @@
         <!-- 🪙 依R幣數量排序開關 (少→多) -->
         <label class="sort-toggle-label">
             <input type="checkbox" id="sortByCoinToggle" onchange="toggleCoinSort(this.checked)" style="cursor: pointer;">
-            🪙 依R幣排序 (少→多)
+            <img src="r_coin.png" class="r-coin-icon" alt="R幣"> 依R幣排序 (少→多)
         </label>
     </div>
     <div id="displayQueuesArea"></div>
@@ -2005,6 +2020,17 @@
         renderQueuesBySelection();
     }
     
+    // 檢查某帳號昨天是否有在「上一次紀錄」中解過任務
+    function checkHadYesterdayQuest(accKey) {
+        let foundInYesterdayTable = false;
+        document.querySelectorAll('.yest-zone .quest-chip').forEach(chip => {
+            if (String(chip.dataset.name) === accKey) {
+                foundInYesterdayTable = true;
+            }
+        });
+        return foundInYesterdayTable || !!yesterdayCompleteTimes[accKey];
+    }
+
     // 完整佇列渲染函數
     function renderQueuesBySelection() {
         const area = document.getElementById('displayQueuesArea');
@@ -2025,7 +2051,10 @@
             groupWrapper.className = 'visible-queue-group';
             const title = document.createElement('div');
             title.className = 'group-title-tag';
-            title.innerText = `🎯 ${groupName} ${sortByCoin ? '(R幣少→多)' : ''}`;
+            
+            const rCoinImg = '<img src="r_coin.png" class="r-coin-icon" alt="R幣">';
+            title.innerHTML = `🎯 ${groupName} ${sortByCoin ? `(依昨天無任務優先 -> ${rCoinImg}少→多)` : ''}`;
+            
             groupWrapper.appendChild(title);
             const queueBox = document.createElement('div');
             queueBox.className = 'queue-box';
@@ -2034,11 +2063,21 @@
             if (accountGroups[groupName]) {
                 let accountsToRender = [...accountGroups[groupName]];
     
-                // 🪙 R幣由少到多排序 (coinA - coinB)
+                // 🪙 排序 logic：優先按昨天沒解任務(0)排前面，有解(1)排後面；同狀況下再依R幣少→多排序
                 if (sortByCoin) {
                     accountsToRender.sort((a, b) => {
-                        let coinA = Number(coinData[String(a)]) || 0;
-                        let coinB = Number(coinData[String(b)]) || 0;
+                        let accA = String(a);
+                        let accB = String(b);
+
+                        let hadQuestA = checkHadYesterdayQuest(accA) ? 1 : 0;
+                        let hadQuestB = checkHadYesterdayQuest(accB) ? 1 : 0;
+
+                        if (hadQuestA !== hadQuestB) {
+                            return hadQuestA - hadQuestB; // 0 (沒解任務) 排前面，1 (有解任務) 排後面
+                        }
+
+                        let coinA = Number(coinData[accA]) || 0;
+                        let coinB = Number(coinData[accB]) || 0;
                         return coinA - coinB;
                     });
                 }
@@ -2057,7 +2096,7 @@
     
                     let extraInfo = [];
                     if (yestTimeText) extraInfo.push(yestTimeText);
-                    if (sortByCoin) extraInfo.push(`🪙${coinVal}`);
+                    if (sortByCoin) extraInfo.push(`<img src="r_coin.png" class="r-coin-icon" alt="R幣">${coinVal}`);
     
                     if (extraInfo.length > 0) {
                         btn.innerHTML = `<span>${acc}</span><span class="yest-time-sub">(${extraInfo.join(' | ')})</span>`;
