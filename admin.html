@@ -167,7 +167,20 @@
     <div id="coinTableArea">載入中...</div>
 </div>
 
-<!-- 2. 🏷️ 帳號代號對照表設定 (新增的獨立卡片) -->
+<!-- 2. IOS 帳號獨立金幣維護 -->
+<div class="card">
+    <h2>🍏 IOS 帳號金幣維護</h2>
+    <div class="input-group editable-panel" id="iosInputPanel">
+        <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
+        <button onclick="addIosAccount()">新增IOS帳號</button>
+    </div>
+    <div style="font-size: 12px; color: #718096; margin-bottom: 8px;">
+        💡 獨立維護所有 IOS 帳號的金幣：
+    </div>
+    <div id="iosCoinTableArea">載入中...</div>
+</div>
+
+<!-- 3. 🏷️ 帳號代號對照表設定 (新增的獨立卡片) -->
 <div class="card">
     <h2>🏷️ 帳號代號對照表設定</h2>
     <div class="input-group editable-panel" id="mappingInputPanel">
@@ -179,19 +192,6 @@
         💡 獨立維護數字代號對應的完整帳號名稱，不影響金幣計算：
     </div>
     <div id="mappingTableArea">載入中...</div>
-</div>
-
-<!-- 3. IOS 帳號獨立金幣維護 -->
-<div class="card">
-    <h2>🍏 IOS 帳號金幣維護</h2>
-    <div class="input-group editable-panel" id="iosInputPanel">
-        <input type="text" id="newIosInput" placeholder="輸入IOS帳號 (例: 雲)">
-        <button onclick="addIosAccount()">新增IOS帳號</button>
-    </div>
-    <div style="font-size: 12px; color: #718096; margin-bottom: 8px;">
-        💡 獨立維護所有 IOS 帳號的金幣：
-    </div>
-    <div id="iosCoinTableArea">載入中...</div>
 </div>
 
 <!-- 4. 裝置清單管理 -->
@@ -245,7 +245,40 @@
     let deviceSortableInstance = null;
     let isInitialized = false;
 
-    // 1. 初始化監聽：只在剛進網頁時完整渲染一次表格，之後完全不因雲端更新而打斷畫面
+    // 🛠 Firebase 鍵名相容轉換函式
+    function safeObjectForFirebase(obj) {
+        if (!obj || typeof obj !== 'object') return {};
+        let result = {};
+        Object.keys(obj).forEach(key => {
+            const cleanKey = String(key).trim();
+            if (cleanKey !== '') {
+                result['acc_' + cleanKey] = obj[cleanKey];
+            }
+        });
+        return result;
+    }
+
+    function safeObjectFromFirebase(obj) {
+        if (!obj) return {};
+        let result = {};
+        if (Array.isArray(obj)) {
+            obj.forEach((val, idx) => {
+                if (val !== undefined && val !== null) {
+                    result[String(idx)] = val;
+                }
+            });
+            return result;
+        }
+        if (typeof obj === 'object') {
+            Object.keys(obj).forEach(key => {
+                let realKey = key.startsWith('acc_') ? key.substring(4) : key;
+                result[realKey] = obj[key];
+            });
+        }
+        return result;
+    }
+
+    // 1. 初始化監聽：只在剛進網頁時完整渲染一次表格
     document.addEventListener('DOMContentLoaded', () => {
         gameRef.on('value', (snapshot) => {
             cloudData = snapshot.val();
@@ -256,9 +289,11 @@
 
             if (!cloudData.devices) cloudData.devices = [];
             if (!cloudData.groups) cloudData.groups = {};
-            if (!cloudData.coins) cloudData.coins = {};
             if (!cloudData.groups['IOS']) cloudData.groups['IOS'] = [];
-            if (!cloudData.accountMappings) cloudData.accountMappings = {};
+            
+            // 🔓 解析 Firebase 中帶有 acc_ 前綴的物件
+            cloudData.coins = safeObjectFromFirebase(cloudData.coins);
+            cloudData.accountMappings = safeObjectFromFirebase(cloudData.accountMappings);
 
             if (!cloudData.nextFishingTime) {
                 cloudData.nextFishingTime = new Date().toISOString();
@@ -278,7 +313,7 @@
         });
     });
 
-    // 2. 獨立計時器：每秒只透過 JS 更新計時 Span 的文字，絕不重建表格或碰輸入框
+    // 2. 獨立計時器：每秒只透過 JS 更新計時 Span 的文字
     setInterval(() => {
         if (cloudData && cloudData.nextFishingTime) {
             updateFishingTimerOnly();
@@ -404,7 +439,11 @@
     }
 
     function saveToCloud() {
-        gameRef.set(cloudData);
+        if (!cloudData) return;
+        let dataToSave = JSON.parse(JSON.stringify(cloudData));
+        dataToSave.coins = safeObjectForFirebase(cloudData.coins);
+        dataToSave.accountMappings = safeObjectForFirebase(cloudData.accountMappings);
+        gameRef.set(dataToSave);
     }
 
     function exportToText() {
