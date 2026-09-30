@@ -273,7 +273,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
-        /* 調整選單與排序按鈕並排容器 */
         .control-row {
             display: flex;
             justify-content: space-between;
@@ -532,7 +531,6 @@
             color: inherit;
         }
 
-        /* 🎣 釣魚冷卻追蹤滿版 Modal 視窗樣式 */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -585,7 +583,6 @@
         }
         .modal-floating-close:hover { background: #c53030; }
 
-        /* 🌈 彩虹冷卻總覽精簡 Modal 視窗樣式 */
         .rainbow-modal-overlay {
             display: none;
             position: fixed;
@@ -636,7 +633,6 @@
             overflow-y: auto;
         }
 
-        /* 🤝 待互助清單 Modal 視窗樣式 */
         .help-modal-overlay {
             display: none;
             position: fixed;
@@ -931,7 +927,6 @@
             <div>
                 <div id="fishModalContentContainer"></div>
                 
-                <!-- ➕ 優化：離開輸入框 (onblur) 或按 Enter (失焦) 即自動觸發冷卻 -->
                 <div style="margin-top: 15px; text-align: center;">
                     <input type="text" id="customFishInput" placeholder="直接輸入帳號觸發冷卻" 
                            onblur="triggerFishCooldownByInput()"
@@ -985,7 +980,7 @@
     </div>
 </div>
 
-<!-- ⚠️ 準備釣魚提醒專屬 Modal 視窗 -->
+<!-- ⚠️️ 準備釣魚提醒專屬 Modal 視窗 -->
 <div class="ready-fish-modal-overlay" id="readyFishModal">
     <div class="ready-fish-card">
         <h3 id="readyModalTitle" style="margin-top: 0; color: #e53e3e; font-size: 18px;">⚠️ 準備要開始釣魚啦！</h3>
@@ -1044,8 +1039,8 @@
     let coinData = {}; 
     let fishingCdData = {}; 
     let rainbowCdData = {}; 
-    let helpListData = {}; // 🤝 待互助清單資料
-    let accountMappingsData = {}; // 🏷️ 儲存後台帳號對照表
+    let helpListData = {}; 
+    let accountMappingsData = {}; 
     let yesterdayCompleteTimes = {}; 
     let noQuestAccounts = {}; 
     let cloudDataGlobal = null; 
@@ -1055,9 +1050,46 @@
     let readyModalManuallyClosed = false; 
     let alertedRainbowSet = new Set();
     
+    // 全域防止長放開手指誤觸點擊鎖
+    let globalLastLongPressTime = 0;
+    
     const FISHING_CD_DURATION = 60 * 60 * 1000;
     const FISHING_CD_OFFSET = 45 * 60 * 1000;
     const RAINBOW_CD_DURATION = (19 * 60 + 30) * 1000;
+
+    function safeObjectForFirebase(obj) {
+        if (!obj || typeof obj !== 'object') return {};
+        let result = {};
+        Object.keys(obj).forEach(key => {
+            const cleanKey = String(key).trim();
+            if (cleanKey !== '') {
+                result['acc_' + cleanKey] = obj[cleanKey];
+            }
+        });
+        return result;
+    }
+
+    function safeObjectFromFirebase(obj) {
+        if (!obj) return {};
+        let result = {};
+        
+        if (Array.isArray(obj)) {
+            obj.forEach((val, idx) => {
+                if (val !== undefined && val !== null) {
+                    result[String(idx)] = val;
+                }
+            });
+            return result;
+        }
+        
+        if (typeof obj === 'object') {
+            Object.keys(obj).forEach(key => {
+                let realKey = key.startsWith('acc_') ? key.substring(4) : key;
+                result[realKey] = obj[key];
+            });
+        }
+        return result;
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         listenToFirebase();
@@ -1124,15 +1156,6 @@
         return list;
     }
 
-    function normalizeObjectKeys(obj) {
-        if (!obj || typeof obj !== 'object') return {};
-        let normalized = {};
-        Object.keys(obj).forEach(key => {
-            normalized[String(key)] = obj[key];
-        });
-        return normalized;
-    }
-
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -1169,26 +1192,14 @@
                 devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES;
                 activeDateStr = data.activeDate || todayFormatted;
                 
-                if (Array.isArray(data.adWatched)) {
-                    let converted = {};
-                    let flatList = getAllFlatAccounts();
-                    data.adWatched.forEach((val, idx) => {
-                        if (flatList[idx] && val) converted[String(flatList[idx].name)] = true;
-                    });
-                    adWatchedData = converted;
-                } else {
-                    adWatchedData = normalizeObjectKeys(data.adWatched);
-                }
-
-                coinData = normalizeObjectKeys(data.coins);
-                fishingCdData = normalizeObjectKeys(data.fishingCd); 
-                rainbowCdData = normalizeObjectKeys(data.rainbowCd); 
-                helpListData = normalizeObjectKeys(data.helpList); // 🤝 讀取雲端待互助清單
-
-                yesterdayCompleteTimes = normalizeObjectKeys(data.yesterdayCompleteTimes);
-                noQuestAccounts = normalizeObjectKeys(data.noQuestAccounts);
-                // 讀取帳號對照表
-                accountMappingsData = normalizeObjectKeys(data.accountMappings);
+                adWatchedData = safeObjectFromFirebase(data.adWatched);
+                coinData = safeObjectFromFirebase(data.coins);
+                fishingCdData = safeObjectFromFirebase(data.fishingCd); 
+                rainbowCdData = safeObjectFromFirebase(data.rainbowCd); 
+                helpListData = safeObjectFromFirebase(data.helpList);
+                yesterdayCompleteTimes = safeObjectFromFirebase(data.yesterdayCompleteTimes);
+                noQuestAccounts = safeObjectFromFirebase(data.noQuestAccounts);
+                accountMappingsData = safeObjectFromFirebase(data.accountMappings);
             }
 
             initTable();
@@ -1196,7 +1207,7 @@
             renderQueuesBySelection();
             renderAdPanel(); 
             renderRainbowOverview(); 
-            renderHelpOverview(); // 🤝 渲染待互助清單
+            renderHelpOverview(); 
             updateDateLabels(); 
             
             document.querySelectorAll('.drop-zone').forEach(z => z.innerHTML = '');
@@ -1297,7 +1308,7 @@
 
         if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
             displayEl.style.color = "#e53e3e";
-            displayEl.innerHTML = `⚠️ 準備釣魚！<br>${formattedTime} <span style="font-size:16px;">${countdownStr}</span>`;
+            displayEl.innerHTML = `⚠️️ 準備釣魚！<br>${formattedTime} <span style="font-size:16px;">${countdownStr}</span>`;
         } else {
             displayEl.style.color = "#276749";
             displayEl.innerHTML = `${formattedTime} <span style="font-size:16px; color:#4a5568;">${countdownStr}</span>`;
@@ -1410,13 +1421,13 @@
             groups: accountGroups,
             initialGroups: todayInitialGroups || {},
             activeDate: activeDateStr,
-            adWatched: normalizeObjectKeys(adWatchedData),
-            coins: normalizeObjectKeys(coinData),
-            fishingCd: normalizeObjectKeys(fishingCdData),
-            rainbowCd: normalizeObjectKeys(rainbowCdData),
-            helpList: normalizeObjectKeys(helpListData), // 🤝 儲存待互助清單
-            yesterdayCompleteTimes: normalizeObjectKeys(yesterdayCompleteTimes),
-            noQuestAccounts: normalizeObjectKeys(noQuestAccounts),
+            adWatched: safeObjectForFirebase(adWatchedData),
+            coins: safeObjectForFirebase(coinData),
+            fishingCd: safeObjectForFirebase(fishingCdData),
+            rainbowCd: safeObjectForFirebase(rainbowCdData),
+            helpList: safeObjectForFirebase(helpListData),
+            yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
+            noQuestAccounts: safeObjectForFirebase(noQuestAccounts),
             today: {},
             yesterday: {}
         };
@@ -1477,7 +1488,6 @@
         }
     }
 
-    // 🤝 待互助 Modal 控制函數
     function openHelpModal() {
         document.getElementById('helpModalOverlay').classList.add('show');
         renderHelpOverview();
@@ -1493,21 +1503,16 @@
         }
     }
 
-    // ➕ 離開對話框自動觸發釣魚冷卻
     function triggerFishCooldownByInput() {
         const inputEl = document.getElementById('customFishInput');
         if (!inputEl) return;
         
         const accKey = inputEl.value.trim();
-        
-        // 如果沒有輸入內容，離開對話框時直接忽略，不跳警告
         if (!accKey) return;
 
-        // 觸發原始冷卻機制（60分鐘）
         fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
-        gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
+        saveDataToCloud();
 
-        // 清空輸入框並刷新 Modal 內容
         inputEl.value = '';
         renderFishModalContent();
     }
@@ -1536,17 +1541,29 @@
         sortedGroups.forEach(groupName => {
             let accounts = [...accountGroups[groupName]];
 
+            // 🪙 釣魚追蹤預設依 R 幣數量（少 → 多）排序
             accounts.sort((a, b) => {
                 let keyA = String(a);
                 let keyB = String(b);
                 let cdA = fishingCdData[keyA] || 0;
                 let cdB = fishingCdData[keyB] || 0;
-                let isCdA = now < cdA;
-                let isCdB = now < cdB;
+                let adjustedCdA = cdA - FISHING_CD_OFFSET;
+                let adjustedCdB = cdB - FISHING_CD_OFFSET;
+                let isCdA = now < adjustedCdA;
+                let isCdB = now < adjustedCdB;
 
-                if (isCdA && isCdB) return cdA - cdB;
+                // 1. 未冷卻優先排前面，冷卻中排後面
                 if (isCdA !== isCdB) return isCdA ? 1 : -1;
-                return 0;
+
+                // 2. 如果都在冷卻中，依倒數結束時間由近到遠排序
+                if (isCdA && isCdB) return cdA - cdB;
+
+                // 3. 都在可釣魚狀態（未冷卻），預設依 R 幣數量（少 → 多）排序
+                let coinA = Number(coinData[keyA]) || 0;
+                let coinB = Number(coinData[keyB]) || 0;
+                if (coinA !== coinB) return coinA - coinB;
+
+                return keyA.localeCompare(keyB, 'zh-Hant', { numeric: true });
             });
 
             const section = document.createElement('div');
@@ -1588,33 +1605,61 @@
                 }
                 btn.innerHTML = htmlContent;
 
-                btn.onclick = () => {
-                    fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
-                    gameRef.update({ fishingCd: normalizeObjectKeys(fishingCdData) });
-                };
-
                 let pressTimer = null;
-                btn.addEventListener('touchstart', (e) => {
-                    pressTimer = setTimeout(() => {
-                        e.preventDefault();
-                        toggleFishAdWatchedStatus(accKey);
-                    }, 600);
-                });
-                btn.addEventListener('touchend', () => clearTimeout(pressTimer));
-                btn.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                let startX = 0, startY = 0;
 
-                btn.addEventListener('mousedown', (e) => {
-                    if (e.button === 2) {
-                        e.preventDefault();
-                        toggleFishAdWatchedStatus(accKey);
+                function startPress(e) {
+                    if (e.type === 'mousedown' && e.button !== 0) return;
+                    clearTimeout(pressTimer);
+                    pressTimer = setTimeout(() => {
+                        globalLastLongPressTime = Date.now();
+                        toggleAdWatchedStatus(accKey);
+                    }, 500);
+                }
+
+                function cancelPress() {
+                    clearTimeout(pressTimer);
+                }
+
+                btn.addEventListener('touchstart', (e) => {
+                    if (e.touches && e.touches.length > 0) {
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                    }
+                    startPress(e);
+                }, { passive: true });
+
+                btn.addEventListener('touchend', cancelPress);
+                btn.addEventListener('touchcancel', cancelPress);
+                btn.addEventListener('touchmove', (e) => {
+                    if (e.touches && e.touches.length > 0) {
+                        let moveX = e.touches[0].clientX;
+                        let moveY = e.touches[0].clientY;
+                        if (Math.hypot(moveX - startX, moveY - startY) > 10) {
+                            cancelPress();
+                        }
+                    }
+                }, { passive: true });
+
+                btn.addEventListener('mousedown', startPress);
+                btn.addEventListener('mouseup', cancelPress);
+                btn.addEventListener('mouseleave', cancelPress);
+
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    globalLastLongPressTime = Date.now();
+                    toggleAdWatchedStatus(accKey);
+                });
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (Date.now() - globalLastLongPressTime < 400) {
                         return;
                     }
-                    pressTimer = setTimeout(() => {
-                        toggleFishAdWatchedStatus(accKey);
-                    }, 600);
+                    fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
+                    saveDataToCloud();
+                    renderFishModalContent();
                 });
-                btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
-                btn.addEventListener('contextmenu', (e) => e.preventDefault());
 
                 grid.appendChild(btn);
             });
@@ -1624,26 +1669,24 @@
         });
     }
 
-    function toggleFishAdWatchedStatus(accName) {
-        const accKey = String(accName);
+    function toggleAdWatchedStatus(accName) {
+        if (!accName) return;
+        const accKey = String(accName).trim();
         adWatchedData[accKey] = !adWatchedData[accKey];
         saveDataToCloud();
         renderAdPanel();
-        renderFishModalContent();
+        if (document.getElementById('fishModalOverlay').classList.contains('show')) {
+            renderFishModalContent();
+        }
     }
 
     function togglePanel(bodyId, arrowId) {
         const body = document.getElementById(bodyId);
         const arrow = document.getElementById(arrowId);
         body.classList.toggle('show');
-        if (body.classList.contains('show')) {
-            arrow.innerText = '▲ 收合';
-        } else {
-            arrow.innerText = '▼ 展開';
-        }
+        arrow.innerText = body.classList.contains('show') ? '▲ 收合' : '▼ 展開';
     }
     
-    // 🏷️ 取得顯示名稱 (若有後台對照表設定則顯示：代號 (完整名稱)，否則顯示原代號)
     function getDisplayName(accName) {
         const accKey = String(accName);
         if (accountMappingsData && accountMappingsData[accKey]) {
@@ -1652,7 +1695,6 @@
         return accKey;
     }
 
-    // 📋 複製專用：僅完整名稱 (無對照則退回原代號)
     function getRealAccountName(accName) {
         const accKey = String(accName);
         if (accountMappingsData && accountMappingsData[accKey]) {
@@ -1663,6 +1705,7 @@
 
     function renderAdPanel() {
         const grid = document.getElementById('adGridArea');
+        if (!grid) return;
         grid.innerHTML = '';
 
         let sortedAdAccounts = getSortedAdAccounts();
@@ -1672,80 +1715,94 @@
         sortedAdAccounts.forEach(accName => {
             const accKey = String(accName);
             const isWatched = !!adWatchedData[accKey];
-            const isHelpActive = !!helpListData[accKey]; // 🤝 判斷是否處於待互助狀態
+            const isHelpActive = !!helpListData[accKey];
             
             if (isWatched) watchedCount++;
 
             const chip = document.createElement('div');
             chip.className = `ad-chip ${isWatched ? 'watched' : ''} ${isHelpActive ? 'help-active' : ''}`;
             
-            // 💡 關鍵修改：如果是待互助狀態且有對照名稱，顯示對應完整名稱
             if (isHelpActive) {
                 chip.innerText = getDisplayName(accName);
             } else {
                 chip.innerText = accName;
             }
 
-            // 💡 點擊/雙擊/防衝突機制
-            let tapCount = 0;
-            let tapTimer = null;
+            let clickTimer = null;
+            let pressTimer = null;
+            let startX = 0, startY = 0;
 
+            function startPress(e) {
+                if (e.type === 'mousedown' && e.button !== 0) return;
+                clearTimeout(pressTimer);
+                pressTimer = setTimeout(() => {
+                    globalLastLongPressTime = Date.now();
+                    triggerRainbowCooldown(accKey);
+                }, 500);
+            }
+
+            function cancelPress() {
+                clearTimeout(pressTimer);
+            }
+
+            chip.addEventListener('touchstart', (e) => {
+                if (e.touches && e.touches.length > 0) {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }
+                startPress(e);
+            }, { passive: true });
+
+            chip.addEventListener('touchend', cancelPress);
+            chip.addEventListener('touchcancel', cancelPress);
+            chip.addEventListener('touchmove', (e) => {
+                if (e.touches && e.touches.length > 0) {
+                    let moveX = e.touches[0].clientX;
+                    let moveY = e.touches[0].clientY;
+                    if (Math.hypot(moveX - startX, moveY - startY) > 10) {
+                        cancelPress();
+                    }
+                }
+            }, { passive: true });
+
+            chip.addEventListener('mousedown', startPress);
+            chip.addEventListener('mouseup', cancelPress);
+            chip.addEventListener('mouseleave', cancelPress);
+
+            chip.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                globalLastLongPressTime = Date.now();
+                triggerRainbowCooldown(accKey);
+            });
+
+            let clicks = 0;
             chip.addEventListener('click', (e) => {
                 e.stopPropagation();
-                tapCount++;
-
-                if (tapCount === 1) {
-                    tapTimer = setTimeout(() => {
-                        // 判定單擊：切換廣告狀態
-                        adWatchedData[accKey] = !adWatchedData[accKey];
-                        saveDataToCloud();
-                        renderAdPanel();
-                        if (document.getElementById('fishModalOverlay').classList.contains('show')) {
-                            renderFishModalContent();
-                        }
-                        tapCount = 0;
-                    }, 250);
-                } else if (tapCount === 2) {
-                    // 判定雙擊：切換待互助清單狀態
-                    clearTimeout(tapTimer);
-                    toggleHelpList(accKey);
-                    tapCount = 0;
-                }
-            });
-
-            // 💡 長按：觸發彩虹冷卻
-            let pressTimer = null;
-            chip.addEventListener('touchstart', (e) => {
-                pressTimer = setTimeout(() => {
-                    e.preventDefault();
-                    triggerRainbowCooldown(accKey);
-                    tapCount = 0;
-                }, 600);
-            });
-            chip.addEventListener('touchend', () => clearTimeout(pressTimer));
-            chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
-
-            chip.addEventListener('mousedown', (e) => {
-                if (e.button === 2) {
-                    e.preventDefault();
-                    triggerRainbowCooldown(accKey);
+                if (Date.now() - globalLastLongPressTime < 400) {
                     return;
                 }
-                pressTimer = setTimeout(() => {
-                    triggerRainbowCooldown(accKey);
-                    tapCount = 0;
-                }, 600);
+                clicks++;
+                if (clicks === 1) {
+                    clickTimer = setTimeout(() => {
+                        toggleAdWatchedStatus(accKey);
+                        clicks = 0;
+                    }, 250);
+                } else if (clicks === 2) {
+                    clearTimeout(clickTimer);
+                    toggleHelpList(accKey);
+                    clicks = 0;
+                }
             });
-            chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
-            chip.addEventListener('contextmenu', (e) => e.preventDefault());
 
             grid.appendChild(chip);
         });
 
-        document.getElementById('adPanelTitle').innerText = `📺 今日廣告賺 R 幣記錄 (已完成: ${watchedCount}/${totalCount})`;
+        const titleEl = document.getElementById('adPanelTitle');
+        if (titleEl) {
+            titleEl.innerText = `📺 今日廣告賺 R 幣記錄 (已完成: ${watchedCount}/${totalCount})`;
+        }
     }
 
-    // 🤝 切換待互助清單狀態（包含新增與消除）
     function toggleHelpList(accName) {
         const accKey = String(accName);
         if (helpListData[accKey]) {
@@ -1754,11 +1811,10 @@
             helpListData[accKey] = true; 
         }
         saveDataToCloud();
-        renderAdPanel(); // 即時更新廣告晶片的橘框與名稱
-        renderHelpOverview(); // 即時更新懸浮按鈕與 Modal 畫面
+        renderAdPanel(); 
+        renderHelpOverview(); 
     }
 
-    // 🤝 備用剪貼簿複製備援機制
     function fallbackCopyText(text) {
         const textArea = document.createElement("textarea");
         textArea.value = text;
@@ -1777,7 +1833,6 @@
         document.body.removeChild(textArea);
     }
 
-    // 🤝 渲染待互助清單
     function renderHelpOverview() {
         const box = document.getElementById('helpOverviewBox');
         const openBtn = document.getElementById('helpModalOpenBtn');
@@ -1798,13 +1853,10 @@
             chip.style.borderColor = '#dd6b20';
             chip.style.background = '#fffaf0';
             
-            // 💡 使用 getDisplayName 顯示代號與完整名稱
             chip.innerText = getDisplayName(accKey);
 
-            // 💡 點擊複製：僅複製完整名稱 (例如: realfarm_user38)
             chip.addEventListener('click', () => {
                 const textToCopy = getRealAccountName(accKey);
-                
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         showToast(`已複製：${textToCopy}`);
@@ -1816,35 +1868,24 @@
                 }
             });
 
-            // 💡 2. 長按（手機）或右鍵（電腦）取消待互助狀態
             let pressTimer = null;
-            chip.addEventListener('touchstart', (e) => {
+            chip.addEventListener('touchstart', () => {
                 pressTimer = setTimeout(() => {
-                    e.preventDefault();
                     toggleHelpList(accKey);
                 }, 600);
-            });
+            }, { passive: true });
             chip.addEventListener('touchend', () => clearTimeout(pressTimer));
             chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
-            chip.addEventListener('mousedown', (e) => {
-                if (e.button === 2) { // 右鍵點擊
-                    e.preventDefault();
-                    toggleHelpList(accKey);
-                    return;
-                }
-                pressTimer = setTimeout(() => {
-                    toggleHelpList(accKey);
-                }, 600);
+            chip.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                toggleHelpList(accKey);
             });
-            chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
-            chip.addEventListener('contextmenu', (e) => e.preventDefault());
             
             box.appendChild(chip);
         });
     }
 
-    // 📋 複製成功提示訊息
     function showToast(message) {
         let toast = document.getElementById('toastMsg');
         if (!toast) {
@@ -1954,27 +1995,18 @@
             };
 
             let pressTimer = null;
-            chip.addEventListener('touchstart', (e) => {
+            chip.addEventListener('touchstart', () => {
                 pressTimer = setTimeout(() => {
-                    e.preventDefault();
                     removeRainbowCooldown(item.name);
                 }, 600);
-            });
+            }, { passive: true });
             chip.addEventListener('touchend', () => clearTimeout(pressTimer));
             chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
-            chip.addEventListener('mousedown', (e) => {
-                if (e.button === 2) {
-                    e.preventDefault();
-                    removeRainbowCooldown(item.name);
-                    return;
-                }
-                pressTimer = setTimeout(() => {
-                    removeRainbowCooldown(item.name);
-                }, 600);
+            chip.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                removeRainbowCooldown(item.name);
             });
-            chip.addEventListener('mouseup', () => clearTimeout(pressTimer));
-            chip.addEventListener('contextmenu', (e) => e.preventDefault());
 
             box.appendChild(chip);
         });
@@ -2011,16 +2043,13 @@
         else btnText.innerText = `📋 已顯示 ${selectedGroupNames.size} 個佇列：${Array.from(selectedGroupNames).join(', ')}`;
     }
 
-    // 全局控制變數
     let sortByCoin = false;
     
-    // 切換排序狀態與重新渲染
     function toggleCoinSort(enabled) {
         sortByCoin = enabled;
         renderQueuesBySelection();
     }
     
-    // 檢查某帳號昨天是否有在「上一次紀錄」中解過任務
     function checkHadYesterdayQuest(accKey) {
         let foundInYesterdayTable = false;
         document.querySelectorAll('.yest-zone .quest-chip').forEach(chip => {
@@ -2031,7 +2060,6 @@
         return foundInYesterdayTable || !!yesterdayCompleteTimes[accKey];
     }
 
-    // 完整佇列渲染函數
     function renderQueuesBySelection() {
         const area = document.getElementById('displayQueuesArea');
         area.innerHTML = '';
@@ -2063,7 +2091,6 @@
             if (accountGroups[groupName]) {
                 let accountsToRender = [...accountGroups[groupName]];
     
-                // 🪙 排序 logic：優先按昨天沒解任務(0)排前面，有解(1)排後面；同狀況下再依R幣少→多排序
                 if (sortByCoin) {
                     accountsToRender.sort((a, b) => {
                         let accA = String(a);
@@ -2073,7 +2100,7 @@
                         let hadQuestB = checkHadYesterdayQuest(accB) ? 1 : 0;
 
                         if (hadQuestA !== hadQuestB) {
-                            return hadQuestA - hadQuestB; // 0 (沒解任務) 排前面，1 (有解任務) 排後面
+                            return hadQuestA - hadQuestB; 
                         }
 
                         let coinA = Number(coinData[accA]) || 0;
@@ -2123,12 +2150,11 @@
                     };
     
                     let pressTimer = null;
-                    btn.addEventListener('touchstart', (e) => {
+                    btn.addEventListener('touchstart', () => {
                         pressTimer = setTimeout(() => {
-                            e.preventDefault();
                             toggleNoQuestStatus(accKey);
                         }, 600);
-                    });
+                    }, { passive: true });
                     btn.addEventListener('touchend', () => clearTimeout(pressTimer));
                     btn.addEventListener('touchmove', () => clearTimeout(pressTimer));
     
@@ -2143,7 +2169,6 @@
             groupWrapper.appendChild(queueBox);
             area.appendChild(groupWrapper);
     
-            // 拖曳套件：開啟R幣排序時停用拖曳，維護自訂排序不被覆蓋
             const sortable = new Sortable(queueBox, {
                 group: 'shared-accounts', 
                 animation: 150,
@@ -2282,24 +2307,20 @@
                 isLongPress = true;
                 let currentStatus = chip.dataset.status;
                 let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
-                toggleChipStatus(uid, accName, groupName, newStatus);
+                
+                let timeStr = null;
+                if (newStatus === 'in-progress') {
+                    const now = new Date();
+                    const hh = String(now.getHours()).padStart(2, '0');
+                    const mm = String(now.getMinutes()).padStart(2, '0');
+                    timeStr = `${hh}:${mm}`;
+                }
+                toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
             }, 600);
-        });
+        }, { passive: true });
 
-        chip.addEventListener('touchend', () => { clearTimeout(pressTimer); });
-        chip.addEventListener('touchmove', () => { clearTimeout(pressTimer); });
-
-        chip.addEventListener('mousedown', () => {
-            isLongPress = false;
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                let currentStatus = chip.dataset.status;
-                let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
-                toggleChipStatus(uid, accName, groupName, newStatus);
-            }, 600);
-        });
-
-        chip.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
+        chip.addEventListener('touchend', () => clearTimeout(pressTimer));
+        chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
         chip.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2308,7 +2329,7 @@
             let currentStatus = chip.dataset.status;
             let newStatus = (currentStatus === 'completed') ? 'normal' : 'completed';
             
-            let timeStr = '';
+            let timeStr = null;
             if (newStatus === 'completed') {
                 const now = new Date();
                 const hh = String(now.getHours()).padStart(2, '0');
@@ -2376,6 +2397,7 @@
 
     function updatePendingOverview() {
         const box = document.getElementById('pendingOverviewBox');
+        if (!box) return;
         box.innerHTML = '';
 
         let pendingChips = [];
@@ -2395,10 +2417,12 @@
         });
 
         const titleText = document.getElementById('overviewTitleText');
-        titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
+        if (titleText) {
+            titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
+        }
 
         if (pendingChips.length === 0) {
-            box.innerHTML = ''; 
+            box.innerHTML = '<span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務,太棒了！</span>'; 
             return;
         }
 
@@ -2433,6 +2457,7 @@
         let comp = document.querySelectorAll('.today-zone .quest-chip.completed').length;
         
         const rateTag = document.getElementById('completionRateTag');
+        if (!rateTag) return;
         if (total > 0 && comp === total) {
             rateTag.innerHTML = `<span style="font-size: 20px;">💯</span> (${comp}/${total})`;
         } else {
@@ -2467,10 +2492,14 @@
         
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
             let accKey = String(chip.dataset.name);
-            if (chip.dataset.status === 'completed') {
+            
+            if (chip.dataset.status === 'completed' || chip.dataset.status === 'in-progress') {
                 if (chip.dataset.completedAt) {
                     yesterdayCompleteTimes[accKey] = chip.dataset.completedAt;
                 }
+            }
+
+            if (chip.dataset.status === 'completed') {
                 let currentCoin = Number(coinData[accKey]) || 0;
                 coinData[accKey] = currentCoin + 3;
             }
