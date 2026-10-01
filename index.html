@@ -980,7 +980,7 @@
     </div>
 </div>
 
-<!-- ⚠️️ 準備釣魚提醒專屬 Modal 視窗 -->
+<!-- ⚠ 準備釣魚提醒專屬 Modal 視窗 -->
 <div class="ready-fish-modal-overlay" id="readyFishModal">
     <div class="ready-fish-card">
         <h3 id="readyModalTitle" style="margin-top: 0; color: #e53e3e; font-size: 18px;">⚠️ 準備要開始釣魚啦！</h3>
@@ -1053,8 +1053,9 @@
     // 全域防止長放開手指誤觸點擊鎖
     let globalLastLongPressTime = 0;
     
-    const FISHING_CD_DURATION = 60 * 60 * 1000;
-    const FISHING_CD_OFFSET = 45 * 60 * 1000;
+    // 🎣 設定：釣魚冷卻總時長 2 小時，倒數只顯示前 15 分鐘 (2小時 - 105分鐘 = 15分鐘)
+    const FISHING_CD_DURATION = 120 * 60 * 1000;
+    const FISHING_CD_OFFSET = 105 * 60 * 1000;
     const RAINBOW_CD_DURATION = (19 * 60 + 30) * 1000;
 
     function safeObjectForFirebase(obj) {
@@ -1308,7 +1309,7 @@
 
         if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
             displayEl.style.color = "#e53e3e";
-            displayEl.innerHTML = `⚠️️ 準備釣魚！<br>${formattedTime} <span style="font-size:16px;">${countdownStr}</span>`;
+            displayEl.innerHTML = `⚠ 準備釣魚！<br>${formattedTime} <span style="font-size:16px;">${countdownStr}</span>`;
         } else {
             displayEl.style.color = "#276749";
             displayEl.innerHTML = `${formattedTime} <span style="font-size:16px; color:#4a5568;">${countdownStr}</span>`;
@@ -1541,24 +1542,24 @@
         sortedGroups.forEach(groupName => {
             let accounts = [...accountGroups[groupName]];
 
-            // 🪙 釣魚追蹤預設依 R 幣數量（少 → 多）排序
+            // 🪙 釣魚追蹤排序邏輯 (2小時冷卻模式)
             accounts.sort((a, b) => {
                 let keyA = String(a);
                 let keyB = String(b);
                 let cdA = fishingCdData[keyA] || 0;
                 let cdB = fishingCdData[keyB] || 0;
-                let adjustedCdA = cdA - FISHING_CD_OFFSET;
-                let adjustedCdB = cdB - FISHING_CD_OFFSET;
-                let isCdA = now < adjustedCdA;
-                let isCdB = now < adjustedCdB;
 
-                // 1. 未冷卻優先排前面，冷卻中排後面
+                // 判定是否還未滿 2 小時 (只要未滿 2 小時就視為冷卻中)
+                let isCdA = now < cdA;
+                let isCdB = now < cdB;
+
+                // 1. 已滿 2 小時（恢復完成）優先排在最前面，未滿 2 小時排在後面
                 if (isCdA !== isCdB) return isCdA ? 1 : -1;
 
-                // 2. 如果都在冷卻中，依倒數結束時間由近到遠排序
+                // 2. 如果都在 2 小時冷卻內，依冷卻結束時間由近到遠排序
                 if (isCdA && isCdB) return cdA - cdB;
 
-                // 3. 都在可釣魚狀態（未冷卻），預設依 R 幣數量（少 → 多）排序
+                // 3. 都在可釣魚狀態（已滿 2 小時），預設依 R 幣數量（少 → 多）排序
                 let coinA = Number(coinData[keyA]) || 0;
                 let coinB = Number(coinData[keyB]) || 0;
                 if (coinA !== coinB) return coinA - coinB;
@@ -1581,7 +1582,9 @@
                 const accKey = String(acc);
                 let cdEnd = fishingCdData[accKey] || 0;
                 let adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
-                const isCd = now < adjustedCdEnd;
+                
+                const isCdFull = now < cdEnd;           // 是否未滿 2 小時 (決定是否處於冷卻區域/灰色)
+                const isCd15Min = now < adjustedCdEnd; // 是否在 前15分鐘 倒數中 (決定是否顯示倒數文字)
                 
                 let remainSec = Math.ceil((adjustedCdEnd - now) / 1000);
                 let remainMin = Math.floor(remainSec / 60);
@@ -1591,7 +1594,7 @@
                 const hasPendingQuest = pendingOrInProgressSet.has(accKey);
 
                 const btn = document.createElement('button');
-                btn.className = `fish-btn ${isCd ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''}`;
+                btn.className = `fish-btn ${isCdFull ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''}`;
 
                 let badgeHtml = '';
                 if (hasPendingQuest) {
@@ -1599,7 +1602,8 @@
                 }
 
                 let htmlContent = `${badgeHtml}<span>${acc}</span>`;
-                if (isCd && remainSec > 0) {
+                // 只在觸發後的前 15 分鐘顯示文字
+                if (isCd15Min && remainSec > 0) {
                     let timeStr = remainMin > 0 ? `${remainMin}分` : `${remainS}秒`;
                     htmlContent += `<span class="cd-text">${timeStr}</span>`;
                 }
