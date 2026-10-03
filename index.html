@@ -736,6 +736,10 @@
             border-color: #c3e6cb !important;
             opacity: 0.75;
         }
+        /* 彩虹冷卻追蹤已完成的邊框標記 */
+		.fish-btn.rainbow-done {
+		  border: 2px solid #ff79c6 !important;
+		}
 
         .fish-btn .cd-text {
             font-size: 10px;
@@ -1654,9 +1658,10 @@
 
                 const isAdWatched = !!adWatchedData[accKey];
                 const hasPendingQuest = pendingOrInProgressSet.has(accKey);
+				const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
 
                 const btn = document.createElement('button');
-                btn.className = `fish-btn ${isCdFull ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''}`;
+                btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
 
                 let badgeHtml = '';
                 if (hasPendingQuest) {
