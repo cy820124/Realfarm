@@ -588,7 +588,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            z-index: 1100; /* 提高層級，確保可覆蓋釣魚視窗 */
             justify-content: center;
             align-items: center;
             padding: 15px;
@@ -732,8 +732,7 @@
         }
         .fish-btn.cooldown.watched {
             background: #d4edda !important;
-            color: #6c757d !important;
-            border-color: #c3e6cb !important;
+            color: #6c757d !important;            
             opacity: 0.75;
         }
         /* 彩虹冷卻追蹤已完成的邊框標記 */
@@ -931,12 +930,17 @@
             <div>
                 <div id="fishModalContentContainer"></div>
                 
-                <div style="margin-top: 15px; text-align: center;">
-                    <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
-                           onblur="triggerFishCooldownByInput()"
-                           onkeypress="if(event.key === 'Enter') this.blur()"
-                           style="width: 100%; max-width: 280px; padding: 8px 12px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
-                </div>
+                <!-- 🎣 釣魚冷卻追蹤滿版 Modal 視窗內對應區塊 -->
+				<div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+				    <!-- 🌈 彩虹冷卻視窗按鈕（放置於左側） -->
+				    <button onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻視窗</button>
+				    
+				    <!-- 輸入帳號觸發冷卻輸入框（放置於右側） -->
+				    <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
+				           onblur="triggerFishCooldownByInput()"
+				           onkeypress="if(event.key === 'Enter') this.blur()"
+				           style="flex: 1; max-width: 220px; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
+				</div>
             </div>
             <div>
                 <div class="modal-timer-card" id="modalTimerCard">
