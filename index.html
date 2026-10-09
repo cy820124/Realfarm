@@ -588,7 +588,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 1100; /* 提高層級，確保可覆蓋釣魚視窗 */
+            z-index: 1100;
             justify-content: center;
             align-items: center;
             padding: 15px;
@@ -735,10 +735,9 @@
             color: #6c757d !important;            
             opacity: 0.75;
         }
-        /* 彩虹冷卻追蹤已完成的邊框標記 */
-		.fish-btn.rainbow-done {
-		  border: 2px solid #ff79c6 !important;
-		}
+        .fish-btn.rainbow-done {
+            border: 2px solid #ff79c6 !important;
+        }
 
         .fish-btn .cd-text {
             font-size: 10px;
@@ -930,17 +929,13 @@
             <div>
                 <div id="fishModalContentContainer"></div>
                 
-                <!-- 🎣 釣魚冷卻追蹤滿版 Modal 視窗內對應區塊 -->
-				<div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-				    <!-- 🌈 彩虹冷卻視窗按鈕（放置於左側） -->
-				    <button onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻視窗</button>
-				    
-				    <!-- 輸入帳號觸發冷卻輸入框（放置於右側） -->
-				    <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
-				           onblur="triggerFishCooldownByInput()"
-				           onkeypress="if(event.key === 'Enter') this.blur()"
-				           style="flex: 1; max-width: 220px; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
-				</div>
+                <div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <button onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻視窗</button>
+                    <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
+                           onblur="triggerFishCooldownByInput()"
+                           onkeypress="if(event.key === 'Enter') this.blur()"
+                           style="flex: 1; max-width: 220px; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
+                </div>
             </div>
             <div>
                 <div class="modal-timer-card" id="modalTimerCard">
@@ -948,7 +943,7 @@
                     <div id="modalFishingTimerDisplay">載入中...</div>
                 </div>
                 <div style="font-size: 11px; color: #718096; margin-top: 8px; text-align: center; background: #f7fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    💡 點擊晶片：觸發釣魚冷卻 | <strong>長按晶片：切換看廣告狀態</strong><br>
+                    💡 點擊晶片：觸發釣魚冷卻 | <strong>雙擊晶片：加入彩虹冷卻 (19分30秒)</strong> | <strong>長按晶片：切換看廣告狀態</strong><br>
                     小標記說明：<span style="color:#e53e3e; font-weight:bold;">●</span> 當前任務未完成（右上角）
                 </div>
             </div>
@@ -1061,10 +1056,8 @@
     let alertedRainbowSet = new Set();
     let readyRainbowAccounts = new Set();
     
-    // 全域防止長放開手指誤觸點擊鎖
     let globalLastLongPressTime = 0;
     
-    // 🎣 設定：釣魚冷卻總時長 2 小時，倒數只顯示前 15 分鐘 (2小時 - 105分鐘 = 15分鐘)
     const FISHING_CD_DURATION = 120 * 60 * 1000;
     const FISHING_CD_OFFSET = 105 * 60 * 1000;
     const RAINBOW_CD_DURATION = (19 * 60 + 30) * 1000;
@@ -1111,6 +1104,28 @@
             }
         });
 
+        // 💡 方案二：當分頁切回前景時，自動拉取最新資料，確保畫面最新不覆蓋
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                gameRef.once('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        cloudDataGlobal = data;
+                        adWatchedData = safeObjectFromFirebase(data.adWatched);
+                        fishingCdData = safeObjectFromFirebase(data.fishingCd); 
+                        rainbowCdData = safeObjectFromFirebase(data.rainbowCd); 
+                        helpListData = safeObjectFromFirebase(data.helpList);
+                        renderAdPanel();
+                        renderRainbowOverview();
+                        renderHelpOverview();
+                        if (document.getElementById('fishModalOverlay').classList.contains('show')) {
+                            renderFishModalContent();
+                        }
+                    }
+                });
+            }
+        });
+
         setInterval(() => {
             const modal = document.getElementById('fishModalOverlay');
             if (modal.classList.contains('show')) {
@@ -1152,22 +1167,6 @@
         return [...rCoinAccounts, ...iosAccounts];
     }
 
-    function getAllFlatAccounts() {
-        let list = [];
-        if (!accountGroups) return list;
-        let groupOrder = ['R少', 'R中', 'R多', 'IOS'];
-        let allGroups = Object.keys(accountGroups);
-        let sortedGroups = groupOrder.filter(g => allGroups.includes(g));
-        allGroups.forEach(g => { if (!sortedGroups.includes(g)) sortedGroups.push(g); });
-
-        sortedGroups.forEach(gName => {
-            accountGroups[gName].forEach(acc => {
-                list.push({ name: acc, group: gName });
-            });
-        });
-        return list;
-    }
-
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -1197,7 +1196,14 @@
                 helpListData = {};
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
-                saveDataToCloud();
+                
+                // 僅在初始化空資料庫時執行一次全初始化寫入
+                gameRef.set({
+                    devices: devices,
+                    groups: accountGroups,
+                    initialGroups: todayInitialGroups,
+                    activeDate: activeDateStr
+                });
             } else {
                 accountGroups = data.groups || DEFAULT_GROUPS;
                 todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
@@ -1261,6 +1267,31 @@
             document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             setTimeout(() => isRemoteUpdating = false, 100);
         });
+    }
+
+    // 🎯 局部更新 helper：僅儲存特定裝置的「今日任務紀錄」
+    function saveTodayDeviceData(deviceName) {
+        if (isRemoteUpdating || !deviceName) return;
+        const zone = document.querySelector(`.today-zone[data-device="${deviceName}"]`);
+        if (!zone) return;
+
+        const chips = [];
+        zone.querySelectorAll('.quest-chip').forEach(chip => {
+            chips.push({ 
+                uid: chip.dataset.uid, 
+                name: String(chip.dataset.name), 
+                group: chip.dataset.group, 
+                status: chip.dataset.status || 'normal',
+                completedAt: chip.dataset.completedAt || '',
+                completed: chip.classList.contains('completed') 
+            });
+        });
+
+        if (chips.length > 0) {
+            gameRef.child('today/' + deviceName).set(chips);
+        } else {
+            gameRef.child('today/' + deviceName).remove();
+        }
     }
 
     function updateModalFishingTimerOnly() {
@@ -1417,7 +1448,6 @@
         document.getElementById('readyRainbowModal').classList.remove('show');
     }
 
-    // 🎨 簡化彩虹冷卻時間到提醒晶片（無重設字樣與內框）
     function updateReadyRainbowModalContent() {
         const listEl = document.getElementById('readyRainbowAccountList');
         if (!listEl) return;
@@ -1476,55 +1506,6 @@
         document.getElementById('todayHeaderTitle').innerText = `當前任務紀錄 (${activeDateStr}) (可編輯)`;
     }
 
-    function saveDataToCloud() {
-        if (isRemoteUpdating) return;
-        const data = {
-            devices: devices,
-            groups: accountGroups,
-            initialGroups: todayInitialGroups || {},
-            activeDate: activeDateStr,
-            adWatched: safeObjectForFirebase(adWatchedData),
-            coins: safeObjectForFirebase(coinData),
-            fishingCd: safeObjectForFirebase(fishingCdData),
-            rainbowCd: safeObjectForFirebase(rainbowCdData),
-            helpList: safeObjectForFirebase(helpListData),
-            yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
-            noQuestAccounts: safeObjectForFirebase(noQuestAccounts),
-            today: {},
-            yesterday: {}
-        };
-        document.querySelectorAll('.today-zone').forEach(zone => {
-            const key = zone.dataset.device;
-            const chips = [];
-            zone.querySelectorAll('.quest-chip').forEach(chip => {
-                chips.push({ 
-                    uid: chip.dataset.uid, 
-                    name: String(chip.dataset.name), 
-                    group: chip.dataset.group, 
-                    status: chip.dataset.status || 'normal',
-                    completedAt: chip.dataset.completedAt || '',
-                    completed: chip.classList.contains('completed') 
-                });
-            });
-            if (chips.length > 0) data.today[key] = chips;
-        });
-        document.querySelectorAll('.yest-zone').forEach(zone => {
-            const key = zone.dataset.device;
-            const chips = [];
-            zone.querySelectorAll('.quest-chip').forEach(chip => {
-                chips.push({ 
-                    uid: chip.dataset.uid, 
-                    name: String(chip.dataset.name), 
-                    group: chip.dataset.group, 
-                    status: chip.dataset.status || 'normal',
-                    completed: chip.classList.contains('completed') 
-                });
-            });
-            if (chips.length > 0) data.yesterday[key] = chips;
-        });
-        gameRef.update(data);
-    }
-
     function openFishModal() {
         document.getElementById('fishModalOverlay').classList.add('show');
         renderFishModalContent();
@@ -1565,7 +1546,6 @@
         }
     }
 
-    // 🎣 支援以 . 分開的多帳號直接觸發釣魚冷卻
     function triggerFishCooldownByInput() {
         const inputEl = document.getElementById('customFishInput');
         if (!inputEl) return;
@@ -1573,16 +1553,19 @@
         const rawVal = inputEl.value.trim();
         if (!rawVal) return;
 
-        // 以 . 符號拆分多個帳號
         const accKeys = rawVal.split('.').map(s => s.trim()).filter(s => s !== '');
         if (accKeys.length === 0) return;
 
         const now = Date.now();
+        let updates = {};
         accKeys.forEach(accKey => {
             fishingCdData[accKey] = now + FISHING_CD_DURATION;
+            updates['fishingCd/acc_' + accKey] = fishingCdData[accKey];
         });
 
-        saveDataToCloud();
+        if (!isRemoteUpdating) {
+            gameRef.update(updates);
+        }
 
         inputEl.value = '';
         renderFishModalContent();
@@ -1612,24 +1595,18 @@
         sortedGroups.forEach(groupName => {
             let accounts = [...accountGroups[groupName]];
 
-            // 🪙 釣魚追蹤排序邏輯 (2小時冷卻模式)
             accounts.sort((a, b) => {
                 let keyA = String(a);
                 let keyB = String(b);
                 let cdA = fishingCdData[keyA] || 0;
                 let cdB = fishingCdData[keyB] || 0;
 
-                // 判定是否還未滿 2 小時 (只要未滿 2 小時就視為冷卻中)
                 let isCdA = now < cdA;
                 let isCdB = now < cdB;
 
-                // 1. 已滿 2 小時（恢復完成）優先排在最前面，未滿 2 小時排在後面
                 if (isCdA !== isCdB) return isCdA ? 1 : -1;
-
-                // 2. 如果都在 2 小時冷卻內，依冷卻結束時間由近到遠排序
                 if (isCdA && isCdB) return cdA - cdB;
 
-                // 3. 都在可釣魚狀態（已滿 2 小時），預設依 R 幣數量（少 → 多）排序
                 let coinA = Number(coinData[keyA]) || 0;
                 let coinB = Number(coinData[keyB]) || 0;
                 if (coinA !== coinB) return coinA - coinB;
@@ -1653,16 +1630,14 @@
                 let cdEnd = fishingCdData[accKey] || 0;
                 let adjustedCdEnd = cdEnd - FISHING_CD_OFFSET;
                 
-                const isCdFull = now < cdEnd;           // 是否未滿 2 小時 (決定是否處於冷卻區域/灰色)
-                const isCd15Min = now < adjustedCdEnd; // 是否在 前15分鐘 倒數中 (決定是否顯示倒數文字)
-                
+                const isCd15Min = now < adjustedCdEnd;
                 let remainSec = Math.ceil((adjustedCdEnd - now) / 1000);
                 let remainMin = Math.floor(remainSec / 60);
                 let remainS = remainSec % 60;
 
                 const isAdWatched = !!adWatchedData[accKey];
                 const hasPendingQuest = pendingOrInProgressSet.has(accKey);
-				const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
+                const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
 
                 const btn = document.createElement('button');
                 btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
@@ -1673,7 +1648,6 @@
                 }
 
                 let htmlContent = `${badgeHtml}<span>${acc}</span>`;
-                // 只在觸發後的前 15 分鐘顯示文字
                 if (isCd15Min && remainSec > 0) {
                     let timeStr = remainMin > 0 ? `${remainMin}分` : `${remainS}秒`;
                     htmlContent += `<span class="cd-text">${timeStr}</span>`;
@@ -1726,14 +1700,30 @@
                     toggleAdWatchedStatus(accKey);
                 });
 
+                let clickTimer = null;
+                let clicks = 0;
+
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (Date.now() - globalLastLongPressTime < 400) {
                         return;
                     }
-                    fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
-                    saveDataToCloud();
-                    renderFishModalContent();
+                    clicks++;
+                    if (clicks === 1) {
+                        clickTimer = setTimeout(() => {
+                            // 🎯 局部更新：僅更新該帳號的釣魚冷卻
+                            fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
+                            if (!isRemoteUpdating) {
+                                gameRef.child('fishingCd/acc_' + accKey).set(fishingCdData[accKey]);
+                            }
+                            renderFishModalContent();
+                            clicks = 0;
+                        }, 250);
+                    } else if (clicks === 2) {
+                        clearTimeout(clickTimer);
+                        triggerRainbowCooldown(accKey);
+                        clicks = 0;
+                    }
                 });
 
                 grid.appendChild(btn);
@@ -1744,11 +1734,16 @@
         });
     }
 
+    // 🎯 局部更新：僅切換並儲存單一帳號的廣告狀態
     function toggleAdWatchedStatus(accName) {
         if (!accName) return;
         const accKey = String(accName).trim();
         adWatchedData[accKey] = !adWatchedData[accKey];
-        saveDataToCloud();
+        
+        if (!isRemoteUpdating) {
+            gameRef.child('adWatched/acc_' + accKey).set(adWatchedData[accKey]);
+        }
+
         renderAdPanel();
         if (document.getElementById('fishModalOverlay').classList.contains('show')) {
             renderFishModalContent();
@@ -1878,14 +1873,20 @@
         }
     }
 
+    // 🎯 局部更新：僅更新單一帳號的待互助狀態
     function toggleHelpList(accName) {
         const accKey = String(accName);
         if (helpListData[accKey]) {
             delete helpListData[accKey];
+            if (!isRemoteUpdating) {
+                gameRef.child('helpList/acc_' + accKey).remove();
+            }
         } else {
             helpListData[accKey] = true; 
+            if (!isRemoteUpdating) {
+                gameRef.child('helpList/acc_' + accKey).set(true);
+            }
         }
-        saveDataToCloud();
         renderAdPanel(); 
         renderHelpOverview(); 
     }
@@ -1988,19 +1989,32 @@
         }, 1500);
     }
 
+    // 🎯 局部更新：僅觸發並寫入單一帳號的彩虹冷卻
     function triggerRainbowCooldown(accName) {
         const accKey = String(accName);
         rainbowCdData[accKey] = Date.now() + RAINBOW_CD_DURATION;
         alertedRainbowSet.delete(accKey);
-        saveDataToCloud();
+        
+        if (!isRemoteUpdating) {
+            gameRef.child('rainbowCd/acc_' + accKey).set(rainbowCdData[accKey]);
+        }
+
         renderRainbowOverview();
+        if (document.getElementById('fishModalOverlay').classList.contains('show')) {
+            renderFishModalContent();
+        }
     }
 
+    // 🎯 局部更新：移除單一帳號彩虹冷卻
     function removeRainbowCooldown(accName) {
         const accKey = String(accName);
         delete rainbowCdData[accKey];
         alertedRainbowSet.delete(accKey);
-        saveDataToCloud();
+        
+        if (!isRemoteUpdating) {
+            gameRef.child('rainbowCd/acc_' + accKey).remove();
+        }
+
         renderRainbowOverview();
     }
 
@@ -2052,13 +2066,11 @@
             chip.style.padding = '5px 10px';
 
             if (isCdFinished) {
-                // 冷卻結束：變粉紅色
                 chip.style.background = '#fdf2f8';
                 chip.style.color = '#db2777';
                 chip.style.borderColor = '#fbcfe8';
                 chip.innerHTML = `<span>${item.name}</span><span style="font-size: 11px; color: #be185d; font-weight: bold; margin-left:4px;">(結束)</span>`;
             } else {
-                // 倒數進行中：維持原本灰底樣式
                 let totalSecs = Math.ceil(remainMs / 1000);
                 let mm = Math.floor(totalSecs / 60);
                 let ss = totalSecs % 60;
@@ -2222,7 +2234,10 @@
                         
                         const newUid = 'chip_' + Math.random().toString(36).substr(2, 9);
                         addChip(targetZone, accKey, groupName, 'normal', false, newUid, null);
-                        saveDataToCloud();
+                        
+                        // 🎯 局部更新：僅儲存目標裝置的紀錄
+                        saveTodayDeviceData(targetZone.dataset.device);
+
                         updateStats();
                         updatePendingOverview();
                         updateQueueAssignedStatus();
@@ -2263,14 +2278,20 @@
         updateQueueAssignedStatus();
     }
 
+    // 🎯 局部更新：僅更新無任務狀態
     function toggleNoQuestStatus(accName) {
         const accKey = String(accName);
         if (noQuestAccounts[accKey]) {
             delete noQuestAccounts[accKey];
+            if (!isRemoteUpdating) {
+                gameRef.child('noQuestAccounts/acc_' + accKey).remove();
+            }
         } else {
             noQuestAccounts[accKey] = true;
+            if (!isRemoteUpdating) {
+                gameRef.child('noQuestAccounts/acc_' + accKey).set(true);
+            }
         }
-        saveDataToCloud();
         renderQueuesBySelection();
     }
 
@@ -2291,6 +2312,7 @@
         });
     }
 
+    // 🎯 局部更新：僅寫入 groups 佇列順序
     function syncAllGroupsFromDOM() {
         const newGroups = {};
         Object.keys(accountGroups).forEach(g => {
@@ -2304,7 +2326,10 @@
             newGroups[gName] = items;
         });
         accountGroups = newGroups;
-        saveDataToCloud();
+
+        if (!isRemoteUpdating) {
+            gameRef.child('groups').set(accountGroups);
+        }
         updateQueueAssignedStatus();
     }
 
@@ -2423,7 +2448,10 @@
         });
     }
 
+    // 🎯 局部更新：僅更新受影響裝置的任務狀態
     function toggleChipStatus(uid, accName, groupName, newStatus, timeStr = null) {
+        const affectedDevices = new Set();
+
         document.querySelectorAll(`.quest-chip[data-uid="${uid}"]`).forEach(c => {
             c.dataset.status = newStatus;
             if (timeStr !== null) {
@@ -2433,9 +2461,15 @@
             }
             let isOverview = c.closest('#pendingOverviewBox') !== null;
             updateChipAppearance(c, newStatus, accName, false, isOverview, groupName);
+
+            const zone = c.closest('.drop-zone');
+            if (zone && zone.dataset.device) {
+                affectedDevices.add(zone.dataset.device);
+            }
         });
 
-        saveDataToCloud();
+        affectedDevices.forEach(dev => saveTodayDeviceData(dev));
+
         updateStats();
         updatePendingOverview();
         updateQueueAssignedStatus();
@@ -2465,8 +2499,18 @@
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const targetUid = chip.dataset.uid;
-                document.querySelectorAll(`.today-zone .quest-chip[data-uid="${targetUid}"]`).forEach(c => c.remove());
-                saveDataToCloud();
+                const affectedDevices = new Set();
+
+                document.querySelectorAll(`.today-zone .quest-chip[data-uid="${targetUid}"]`).forEach(c => {
+                    const zone = c.closest('.drop-zone');
+                    if (zone && zone.dataset.device) {
+                        affectedDevices.add(zone.dataset.device);
+                    }
+                    c.remove();
+                });
+
+                affectedDevices.forEach(dev => saveTodayDeviceData(dev));
+
                 updateStats();
                 updatePendingOverview();
                 updateQueueAssignedStatus();
@@ -2520,6 +2564,7 @@
         });
     }
 
+    // 🎯 局部更新：旋轉佇列並僅更新特定佇列群組
     function rotateAccountToTail(groupName, accName) {
         let list = accountGroups[groupName];
         if (!list) return;
@@ -2528,6 +2573,10 @@
             list.splice(index, 1); 
             list.push(String(accName));   
             renderQueuesBySelection();
+            
+            if (!isRemoteUpdating) {
+                gameRef.child('groups/' + groupName).set(list);
+            }
         }
     }
 
@@ -2559,6 +2608,7 @@
         document.getElementById('nameModalOverlay').classList.remove('show');
     }
 
+    // 結算日專用：這屬於全局重置性寫入，使用定點批次 update 寫入最新算出的數據
     function confirmShiftToNextDay() {
         const inputField = document.getElementById('nextDayInputName');
         const defaultDateStr = getFormattedDate(new Date());
@@ -2594,24 +2644,49 @@
             });
         }
 
+        const updates = {
+            activeDate: nextDayStr,
+            yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
+            coins: safeObjectForFirebase(coinData),
+            adWatched: null,
+            noQuestAccounts: null,
+            initialGroups: accountGroups,
+            today: null,
+            yesterday: {}
+        };
+
         devices.forEach(device => {
             const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
             const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
             yestZone.innerHTML = '';
+            
+            const chips = [];
             todayZone.querySelectorAll('.quest-chip').forEach(chip => {
                 const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
+                chips.push({
+                    uid: newUid,
+                    name: String(chip.dataset.name),
+                    group: chip.dataset.group,
+                    status: chip.dataset.status || 'normal',
+                    completed: chip.classList.contains('completed')
+                });
                 addChip(yestZone, String(chip.dataset.name), chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
             });
             todayZone.innerHTML = '';
+
+            if (chips.length > 0) {
+                updates['yesterday/' + device] = chips;
+            }
         });
+
         todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
         activeDateStr = nextDayStr; 
         adWatchedData = {}; 
         noQuestAccounts = {}; 
         selectedGroupNames = new Set(['R少']);
-        
-        saveDataToCloud();
-        
+
+        gameRef.update(updates);
+
         renderDropdownMenu();
         renderQueuesBySelection();
         renderAdPanel();
@@ -2634,9 +2709,15 @@
 
             noQuestAccounts = {};
             selectedGroupNames = new Set(['R少']);
+
+            gameRef.update({
+                today: null,
+                groups: accountGroups,
+                noQuestAccounts: null
+            });
+
             renderDropdownMenu();
             renderQueuesBySelection();
-            saveDataToCloud();
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
