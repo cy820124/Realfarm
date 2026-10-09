@@ -1277,6 +1277,10 @@
 
         const chips = [];
         zone.querySelectorAll('.quest-chip').forEach(chip => {
+            // 🛡️ 關鍵防護：如果是不小心混入的昨日歷史紀錄晶片，直接跳過不存入今日任務！
+            if (chip.classList.contains('history-chip')) {
+                return;
+            }
             chips.push({ 
                 uid: chip.dataset.uid, 
                 name: String(chip.dataset.name), 
@@ -2568,19 +2572,22 @@
 
     // 🎯 局部更新：旋轉佇列並僅更新特定佇列群組
     function rotateAccountToTail(groupName, accName) {
-        let list = accountGroups[groupName];
-        if (!list) return;
-        let index = list.indexOf(String(accName));
-        if (index > -1) {
-            list.splice(index, 1); 
-            list.push(String(accName));   
-            renderQueuesBySelection();
-            
-            if (!isRemoteUpdating) {
-                gameRef.child('groups/' + groupName).set(list);
-            }
-        }
-    }
+	    let list = accountGroups[groupName];
+	    if (!list) return;
+	    let index = list.indexOf(String(accName));
+	    if (index > -1) {
+	        list.splice(index, 1); 
+	        list.push(String(accName));   
+	        renderQueuesBySelection();
+	        
+	        // 💡 強制更新該群組順序到 Firebase，確保不遺漏
+	        gameRef.child('groups/' + groupName).set(list, (error) => {
+	            if (error) {
+	                console.error("佇列順序同步失敗:", error);
+	            }
+	        });
+	    }
+	}
 
     function updateStats() {
         let total = document.querySelectorAll('.today-zone .quest-chip').length;
@@ -2611,95 +2618,106 @@
     }
 
     // 結算日專用：這屬於全局重置性寫入，使用定點批次 update 寫入最新算出的數據
-    function confirmShiftToNextDay() {
-        const inputField = document.getElementById('nextDayInputName');
-        const defaultDateStr = getFormattedDate(new Date());
-        let inputName = inputField.value.trim();
-        const nextDayStr = inputName !== "" ? inputName : defaultDateStr;
-
-        document.getElementById('nameModalOverlay').classList.remove('show');
-
-        yesterdayCompleteTimes = {};
-        
-        document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
-            let accKey = String(chip.dataset.name);
-            
-            if (chip.dataset.status === 'completed' || chip.dataset.status === 'in-progress') {
-                if (chip.dataset.completedAt) {
-                    yesterdayCompleteTimes[accKey] = chip.dataset.completedAt;
-                }
-            }
-
-            if (chip.dataset.status === 'completed') {
-                let currentCoin = Number(coinData[accKey]) || 0;
-                coinData[accKey] = currentCoin + 3;
-            }
-        });
-
-        if (adWatchedData && coinData) {
-            Object.keys(adWatchedData).forEach(accName => {
-                if (adWatchedData[accName] === true) {
-                    let accKey = String(accName);
-                    let currentCoin = Number(coinData[accKey]) || 0;
-                    coinData[accKey] = currentCoin + 1;
-                }
-            });
-        }
-
-        const updates = {
-            activeDate: nextDayStr,
-            yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
-            coins: safeObjectForFirebase(coinData),
-            adWatched: null,
-            noQuestAccounts: null,
-            initialGroups: accountGroups,
-            today: null,
-            yesterday: {}
-        };
-
-        devices.forEach(device => {
-            const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
-            const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
-            yestZone.innerHTML = '';
-            
-            const chips = [];
-            todayZone.querySelectorAll('.quest-chip').forEach(chip => {
-                const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
-                chips.push({
-                    uid: newUid,
-                    name: String(chip.dataset.name),
-                    group: chip.dataset.group,
-                    status: chip.dataset.status || 'normal',
-                    completed: chip.classList.contains('completed')
-                });
-                addChip(yestZone, String(chip.dataset.name), chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
-            });
-            todayZone.innerHTML = '';
-
-            if (chips.length > 0) {
-                updates['yesterday/' + device] = chips;
-            }
-        });
-
-        todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
-        activeDateStr = nextDayStr; 
-        adWatchedData = {}; 
-        noQuestAccounts = {}; 
-        selectedGroupNames = new Set(['R少']);
-
-        gameRef.update(updates);
-
-        renderDropdownMenu();
-        renderQueuesBySelection();
-        renderAdPanel();
-        renderRainbowOverview();
-        renderHelpOverview();
-        updateDateLabels();
-        updateStats();
-        updatePendingOverview();
-        updateQueueAssignedStatus();
-        alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
-    }
+	function confirmShiftToNextDay() {
+	    const inputField = document.getElementById('nextDayInputName');
+	    const defaultDateStr = getFormattedDate(new Date());
+	    let inputName = inputField.value.trim();
+	    const nextDayStr = inputName !== "" ? inputName : defaultDateStr;
+	
+	    document.getElementById('nameModalOverlay').classList.remove('show');
+	
+	    yesterdayCompleteTimes = {};
+	    
+	    // 1. 統計今日完成紀錄與計算 R 幣
+	    document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+	        let accKey = String(chip.dataset.name);
+	        
+	        if (chip.dataset.status === 'completed' || chip.dataset.status === 'in-progress') {
+	            if (chip.dataset.completedAt) {
+	                yesterdayCompleteTimes[accKey] = chip.dataset.completedAt;
+	            }
+	        }
+	
+	        if (chip.dataset.status === 'completed') {
+	            let currentCoin = Number(coinData[accKey]) || 0;
+	            coinData[accKey] = currentCoin + 3;
+	        }
+	    });
+	
+	    if (adWatchedData && coinData) {
+	        Object.keys(adWatchedData).forEach(accName => {
+	            if (adWatchedData[accName] === true) {
+	                let accKey = String(accName);
+	                let currentCoin = Number(coinData[accKey]) || 0;
+	                coinData[accKey] = currentCoin + 1;
+	            }
+	        });
+	    }
+	
+	    // 2. 準備更新物件：先強制抹除舊的 today 與 yesterday 節點
+	    const updates = {
+	        activeDate: nextDayStr,
+	        yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
+	        coins: safeObjectForFirebase(coinData),
+	        adWatched: null,
+	        noQuestAccounts: null,
+	        initialGroups: accountGroups,
+	        today: null,
+	        yesterday: null
+	    };
+	
+	    // 3. 將當前的「今日任務」移至「上一次紀錄 (yesterday)」
+	    const newYesterdayData = {};
+	    devices.forEach(device => {
+	        const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
+	        const yestZone = document.querySelector(`.yest-zone[data-device="${device}"]`);
+	        yestZone.innerHTML = '';
+	        
+	        const chips = [];
+	        todayZone.querySelectorAll('.quest-chip').forEach(chip => {
+	            const newUid = 'hist_' + Math.random().toString(36).substr(2, 9);
+	            chips.push({
+	                uid: newUid,
+	                name: String(chip.dataset.name),
+	                group: chip.dataset.group,
+	                status: chip.dataset.status || 'normal',
+	                completed: chip.classList.contains('completed')
+	            });
+	            addChip(yestZone, String(chip.dataset.name), chip.dataset.group, chip.dataset.status || 'normal', true, newUid, null);
+	        });
+	        todayZone.innerHTML = '';
+	
+	        if (chips.length > 0) {
+	            newYesterdayData[device] = chips;
+	        }
+	    });
+	
+	    if (Object.keys(newYesterdayData).length > 0) {
+	        updates['yesterday'] = newYesterdayData;
+	    }
+	
+	    // 4. 更新記憶體變數
+	    todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
+	    activeDateStr = nextDayStr; 
+	    adWatchedData = {}; 
+	    noQuestAccounts = {}; 
+	    selectedGroupNames = new Set(['R少']);
+	
+	    // 5. 將所有異動一次寫入 Firebase
+	    gameRef.update(updates);
+	
+	    // 6. 重新渲染介面
+	    renderDropdownMenu();
+	    renderQueuesBySelection();
+	    renderAdPanel();
+	    renderRainbowOverview();
+	    renderHelpOverview();
+	    updateDateLabels();
+	    updateStats();
+	    updatePendingOverview();
+	    updateQueueAssignedStatus();
+	    alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
+	}
 
     function resetTodayData() {
         if (confirm('確定要清空【當前任務紀錄】，並將【佇列順序】恢復為存檔基準的順序嗎？')) {
