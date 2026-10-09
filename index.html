@@ -2402,79 +2402,81 @@
     }
 
     function setupChipInteractions(chip, accName, groupName, uid) {
-        let pressTimer = null;
-        let isLongPress = false;
-
-        chip.addEventListener('touchstart', () => {
-            isLongPress = false;
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                let currentStatus = chip.dataset.status;
-                let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
-                
-                let timeStr = null;
-                if (newStatus === 'in-progress') {
-                    const now = new Date();
-                    const hh = String(now.getHours()).padStart(2, '0');
-                    const mm = String(now.getMinutes()).padStart(2, '0');
-                    timeStr = `${hh}:${mm}`;
-                }
-                toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
-            }, 600);
-        }, { passive: true });
-
-        chip.addEventListener('touchend', () => clearTimeout(pressTimer));
-        chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
-
-        chip.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (isLongPress) return;
-
-            let currentStatus = chip.dataset.status;
-            let newStatus = (currentStatus === 'completed') ? 'normal' : 'completed';
-            
-            let timeStr = null;
-            if (newStatus === 'completed') {
-                const now = new Date();
-                const hh = String(now.getHours()).padStart(2, '0');
-                const mm = String(now.getMinutes()).padStart(2, '0');
-                timeStr = `${hh}:${mm}`;
-            }
-
-            if (newStatus === 'completed' && groupName && accountGroups[groupName]) {
-                rotateAccountToTail(groupName, accName);
-            }
-            toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
-        });
-    }
-
-    // 🎯 局部更新：僅更新受影響裝置的任務狀態
+	    let pressTimer = null;
+	    let isLongPress = false;
+	
+	    chip.addEventListener('touchstart', () => {
+	        isLongPress = false;
+	        pressTimer = setTimeout(() => {
+	            isLongPress = true;
+	            let currentStatus = chip.dataset.status;
+	            let newStatus = (currentStatus === 'in-progress') ? 'normal' : 'in-progress';
+	            
+	            let timeStr = null;
+	            if (newStatus === 'in-progress') {
+	                const now = new Date();
+	                const hh = String(now.getHours()).padStart(2, '0');
+	                const mm = String(now.getMinutes()).padStart(2, '0');
+	                timeStr = `${hh}:${mm}`;
+	            }
+	            toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
+	        }, 600);
+	    }, { passive: true });
+	
+	    chip.addEventListener('touchend', () => clearTimeout(pressTimer));
+	    chip.addEventListener('touchmove', () => clearTimeout(pressTimer));
+	
+	    chip.addEventListener('click', (e) => {
+	        e.stopPropagation();
+	        if (isLongPress) return;
+	
+	        let currentStatus = chip.dataset.status;
+	        let newStatus = (currentStatus === 'completed') ? 'normal' : 'completed';
+	        
+	        let timeStr = null;
+	        if (newStatus === 'completed') {
+	            const now = new Date();
+	            const hh = String(now.getHours()).padStart(2, '0');
+	            const mm = String(now.getMinutes()).padStart(2, '0');
+	            timeStr = `${hh}:${mm}`;
+	        }
+	
+	        // 💡 修正 1：先切換並儲存任務狀態至 Firebase
+	        toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
+	
+	        // 💡 修正 2：狀態儲存完後，才執行佇列移至隊尾
+	        if (newStatus === 'completed' && groupName && accountGroups[groupName]) {
+	            rotateAccountToTail(groupName, accName);
+	        }
+	    });
+	}
     function toggleChipStatus(uid, accName, groupName, newStatus, timeStr = null) {
-        const affectedDevices = new Set();
-
-        document.querySelectorAll(`.quest-chip[data-uid="${uid}"]`).forEach(c => {
-            c.dataset.status = newStatus;
-            if (timeStr !== null) {
-                c.dataset.completedAt = timeStr;
-            } else if (newStatus === 'normal') {
-                c.removeAttribute('data-completedAt');
-            }
-            let isOverview = c.closest('#pendingOverviewBox') !== null;
-            updateChipAppearance(c, newStatus, accName, false, isOverview, groupName);
-
-            const zone = c.closest('.drop-zone');
-            if (zone && zone.dataset.device) {
-                affectedDevices.add(zone.dataset.device);
-            }
-        });
-
-        affectedDevices.forEach(dev => saveTodayDeviceData(dev));
-
-        updateStats();
-        updatePendingOverview();
-        updateQueueAssignedStatus();
-    }
-
+	    const affectedDevices = new Set();
+	
+	    document.querySelectorAll(`.quest-chip[data-uid="${uid}"]`).forEach(c => {
+	        c.dataset.status = newStatus;
+	        if (timeStr !== null) {
+	            c.dataset.completedAt = timeStr;
+	        } else if (newStatus === 'normal') {
+	            c.removeAttribute('data-completedAt');
+	        }
+	        let isOverview = c.closest('#pendingOverviewBox') !== null;
+	        updateChipAppearance(c, newStatus, accName, false, isOverview, groupName);
+	
+	        // 💡 修正：優先抓取 c.dataset.device（總覽區晶片有設），找不到才找表格 drop-zone
+	        const devName = c.dataset.device || (c.closest('.drop-zone') ? c.closest('.drop-zone').dataset.device : null);
+	        if (devName) {
+	            affectedDevices.add(devName);
+	        }
+	    });
+	
+	    // 正確呼叫儲存受影響裝置的資料
+	    affectedDevices.forEach(dev => saveTodayDeviceData(dev));
+	
+	    updateStats();
+	    updatePendingOverview();
+	    updateQueueAssignedStatus();
+	}
     function updateChipAppearance(chip, status, accName, isHistory, isOverview = false, groupName = '') {
         chip.className = `quest-chip ${isHistory ? 'history-chip' : ''}`;
         if (status === 'completed') chip.classList.add('completed');
