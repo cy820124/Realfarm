@@ -930,7 +930,7 @@
                 <div id="fishModalContentContainer"></div>
                 
                 <div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <button onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻視窗</button>
+                    <button id="modalRainbowBtn" onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻追蹤</button>
                     <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
                            onblur="triggerFishCooldownByInput()"
                            onkeypress="if(event.key === 'Enter') this.blur()"
@@ -1512,12 +1512,14 @@
 
     function openFishModal() {
         document.getElementById('fishModalOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
         renderFishModalContent();
         updateModalFishingTimerOnly();
     }
 
     function closeFishModal() {
         document.getElementById('fishModalOverlay').classList.remove('show');
+        document.body.style.overflow = '';
     }
 
     function openRainbowModal() {
@@ -1581,12 +1583,12 @@
 
         if (!accountGroups) return;
 
-        const pendingOrInProgressSet = new Set();
+        // 🎯 記錄每個帳號在今日任務中的狀態 ('completed', 'in-progress', 'normal')
+        const accountQuestStatus = new Map();
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
+            const accName = String(chip.dataset.name);
             const status = chip.dataset.status || 'normal';
-            if (status !== 'completed') {
-                pendingOrInProgressSet.add(String(chip.dataset.name));
-            }
+            accountQuestStatus.set(accName, status);
         });
 
         let groupOrder = ['R少', 'R中', 'R多', 'IOS'];
@@ -1640,15 +1642,19 @@
                 let remainS = remainSec % 60;
 
                 const isAdWatched = !!adWatchedData[accKey];
-                const hasPendingQuest = pendingOrInProgressSet.has(accKey);
+                const questStatus = accountQuestStatus.get(accKey); // 取得該帳號的任務狀態
                 const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
 
                 const btn = document.createElement('button');
                 btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
 
                 let badgeHtml = '';
-                if (hasPendingQuest) {
-                    badgeHtml = `<div class="fish-badges"><span class="badge-quest" title="當前任務未完成">●</span></div>`;
+                if (questStatus && questStatus !== 'completed') {
+                    // 🔴 任務尚未完成（normal 或 in-progress）顯示紅點
+                    badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #e53e3e;" title="當前任務未完成">●</span></div>`;
+                } else if (questStatus === 'completed') {
+                    // 🟢 任務已完成顯示綠點
+                    badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #38a169;" title="當前任務已完成">●</span></div>`;
                 }
 
                 let htmlContent = `${badgeHtml}<span>${acc}</span>`;
@@ -2050,8 +2056,13 @@
 
         activeRainbowList.sort((a, b) => a.cdEnd - b.cdEnd);
         
-        openBtn.innerText = `🌈 彩虹冷卻追蹤 (${activeRainbowList.length})`;
-
+        const countText = ` (${activeRainbowList.length})`;
+	    openBtn.innerText = `🌈 彩虹冷卻追蹤${countText}`;
+	    
+	    const modalRainbowBtn = document.getElementById('modalRainbowBtn');
+	    if (modalRainbowBtn) {
+	        modalRainbowBtn.innerText = `🌈 彩虹冷卻追蹤${countText}`;
+	    }
         if (activeRainbowList.length === 0) {
             box.innerHTML = `<span style="font-size: 12px; color: #a0aec0;">目前沒有進行中的彩虹冷卻</span>`;
             return;
@@ -2662,6 +2673,7 @@
 	        adWatched: null,
 	        noQuestAccounts: null,
 	        initialGroups: accountGroups,
+	        groups: accountGroups,
 	        today: null,
 	        yesterday: null
 	    };
