@@ -1649,11 +1649,14 @@
                 btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
 
                 let badgeHtml = '';
-                if (questStatus && questStatus !== 'completed') {
-                    // 🔴 任務尚未完成（normal 或 in-progress）顯示紅點
+                if (questStatus === 'in-progress') {
+                    // 🟠 完成一半 / 進行中 顯示橘黃點
+                    badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #dd6b20;" title="任務進行中/完成一半">●</span></div>`;
+                } else if (questStatus && questStatus === 'normal') {
+                    // 🔴 未完成 顯示紅點
                     badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #e53e3e;" title="當前任務未完成">●</span></div>`;
                 } else if (questStatus === 'completed') {
-                    // 🟢 任務已完成顯示綠點
+                    // 🟢 已完成 顯示綠點
                     badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #38a169;" title="當前任務已完成">●</span></div>`;
                 }
 
