@@ -102,7 +102,7 @@
         }
         .btn-rainbow-modal-open:hover { opacity: 0.9; }
 
-        /* 🤝 懸浮待互助清單按鈕樣式（固定於彩虹按鈕下方） */
+        /* 🤝 懸浮待互助清單按鈕樣式 */
         .btn-help-modal-open {
             position: fixed;
             top: 84px;
@@ -1033,6 +1033,7 @@
     const db = firebase.database();
     const gameRef = db.ref("game_tracker_v5");
 
+    let currentVersion = 1; // 🛡️ 本地紀錄的當前資料版本號
     let selectedGroupNames = new Set();
     let todayInitialGroups = null;
     let accountGroups = null; 
@@ -1104,13 +1105,17 @@
             }
         });
 
-        // 💡 方案二：當分頁切回前景時，自動拉取最新資料，確保畫面最新不覆蓋
+        // 💡 當分頁切回前景時，自動拉取最新資料，並檢查版本號
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 gameRef.once('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
+                        if (data.version && data.version > currentVersion) {
+                            showToast("⚡ 發現其他裝置有新版本結算，已更新介面！");
+                        }
                         cloudDataGlobal = data;
+                        currentVersion = data.version || 1;
                         adWatchedData = safeObjectFromFirebase(data.adWatched);
                         fishingCdData = safeObjectFromFirebase(data.fishingCd); 
                         rainbowCdData = safeObjectFromFirebase(data.rainbowCd); 
@@ -1196,15 +1201,19 @@
                 helpListData = {};
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
+                currentVersion = 1;
                 
                 // 僅在初始化空資料庫時執行一次全初始化寫入
                 gameRef.set({
+                    version: 1,
+                    lastModified: firebase.database.ServerValue.TIMESTAMP,
                     devices: devices,
                     groups: accountGroups,
                     initialGroups: todayInitialGroups,
                     activeDate: activeDateStr
                 });
             } else {
+                currentVersion = data.version || 1;
                 accountGroups = data.groups || DEFAULT_GROUPS;
                 todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
                 devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES;
@@ -1264,7 +1273,7 @@
 
             checkReadyFishModalTimer();
 
-            document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
+            document.getElementById('syncStatus').innerText = `⚡ 雲端已同步 (v${currentVersion})`;
             setTimeout(() => isRemoteUpdating = false, 100);
         });
     }
@@ -1277,7 +1286,6 @@
 
         const chips = [];
         zone.querySelectorAll('.quest-chip').forEach(chip => {
-            // 🛡️ 關鍵防護：如果是不小心混入的昨日歷史紀錄晶片，直接跳過不存入今日任務！
             if (chip.classList.contains('history-chip')) {
                 return;
             }
@@ -1291,11 +1299,16 @@
             });
         });
 
+        const updates = {
+            lastModified: firebase.database.ServerValue.TIMESTAMP
+        };
         if (chips.length > 0) {
-            gameRef.child('today/' + deviceName).set(chips);
+            updates['today/' + deviceName] = chips;
         } else {
-            gameRef.child('today/' + deviceName).remove();
+            updates['today/' + deviceName] = null;
         }
+
+        gameRef.update(updates);
     }
 
     function updateModalFishingTimerOnly() {
@@ -1314,7 +1327,10 @@
 
         if (updated) {
             cloudDataGlobal.nextFishingTime = nextTime.toISOString();
-            gameRef.update({ nextFishingTime: cloudDataGlobal.nextFishingTime });
+            gameRef.update({ 
+                nextFishingTime: cloudDataGlobal.nextFishingTime,
+                lastModified: firebase.database.ServerValue.TIMESTAMP
+            });
         }
 
         const durationMs = durationMinutes * 60 * 1000;
@@ -1563,7 +1579,9 @@
         if (accKeys.length === 0) return;
 
         const now = Date.now();
-        let updates = {};
+        let updates = {
+            lastModified: firebase.database.ServerValue.TIMESTAMP
+        };
         accKeys.forEach(accKey => {
             fishingCdData[accKey] = now + FISHING_CD_DURATION;
             updates['fishingCd/acc_' + accKey] = fishingCdData[accKey];
@@ -1583,7 +1601,6 @@
 
         if (!accountGroups) return;
 
-        // 🎯 記錄每個帳號在今日任務中的狀態 ('completed', 'in-progress', 'normal')
         const accountQuestStatus = new Map();
         document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
             const accName = String(chip.dataset.name);
@@ -1642,7 +1659,7 @@
                 let remainS = remainSec % 60;
 
                 const isAdWatched = !!adWatchedData[accKey];
-                const questStatus = accountQuestStatus.get(accKey); // 取得該帳號的任務狀態
+                const questStatus = accountQuestStatus.get(accKey);
                 const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
 
                 const btn = document.createElement('button');
@@ -1650,13 +1667,10 @@
 
                 let badgeHtml = '';
                 if (questStatus === 'in-progress') {
-                    // 🟠 完成一半 / 進行中 顯示橘黃點
                     badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #ffc760;" title="任務進行中/完成一半">●</span></div>`;
                 } else if (questStatus && questStatus === 'normal') {
-                    // 🔴 未完成 顯示紅點
                     badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #e53e3e;" title="當前任務未完成">●</span></div>`;
                 } else if (questStatus === 'completed') {
-                    // 🟢 已完成 顯示綠點
                     badgeHtml = `<div class="fish-badges"><span class="badge-quest" style="color: #38a169;" title="當前任務已完成">●</span></div>`;
                 }
 
@@ -1724,10 +1738,12 @@
                     clicks++;
                     if (clicks === 1) {
                         clickTimer = setTimeout(() => {
-                            // 🎯 局部更新：僅更新該帳號的釣魚冷卻
                             fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
                             if (!isRemoteUpdating) {
-                                gameRef.child('fishingCd/acc_' + accKey).set(fishingCdData[accKey]);
+                                gameRef.update({
+                                    ['fishingCd/acc_' + accKey]: fishingCdData[accKey],
+                                    lastModified: firebase.database.ServerValue.TIMESTAMP
+                                });
                             }
                             renderFishModalContent();
                             clicks = 0;
@@ -1747,14 +1763,16 @@
         });
     }
 
-    // 🎯 局部更新：僅切換並儲存單一帳號的廣告狀態
     function toggleAdWatchedStatus(accName) {
         if (!accName) return;
         const accKey = String(accName).trim();
         adWatchedData[accKey] = !adWatchedData[accKey];
         
         if (!isRemoteUpdating) {
-            gameRef.child('adWatched/acc_' + accKey).set(adWatchedData[accKey]);
+            gameRef.update({
+                ['adWatched/acc_' + accKey]: adWatchedData[accKey],
+                lastModified: firebase.database.ServerValue.TIMESTAMP
+            });
         }
 
         renderAdPanel();
@@ -1886,7 +1904,6 @@
         }
     }
 
-    // 🎯 局部更新：僅更新單一帳號的待互助狀態
     function toggleHelpList(accName) {
         const accKey = String(accName);
         if (helpListData[accKey]) {
@@ -1900,6 +1917,7 @@
                 gameRef.child('helpList/acc_' + accKey).set(true);
             }
         }
+        gameRef.child('lastModified').set(firebase.database.ServerValue.TIMESTAMP);
         renderAdPanel(); 
         renderHelpOverview(); 
     }
@@ -2002,14 +2020,16 @@
         }, 1500);
     }
 
-    // 🎯 局部更新：僅觸發並寫入單一帳號的彩虹冷卻
     function triggerRainbowCooldown(accName) {
         const accKey = String(accName);
         rainbowCdData[accKey] = Date.now() + RAINBOW_CD_DURATION;
         alertedRainbowSet.delete(accKey);
         
         if (!isRemoteUpdating) {
-            gameRef.child('rainbowCd/acc_' + accKey).set(rainbowCdData[accKey]);
+            gameRef.update({
+                ['rainbowCd/acc_' + accKey]: rainbowCdData[accKey],
+                lastModified: firebase.database.ServerValue.TIMESTAMP
+            });
         }
 
         renderRainbowOverview();
@@ -2018,7 +2038,6 @@
         }
     }
 
-    // 🎯 局部更新：移除單一帳號彩虹冷卻
     function removeRainbowCooldown(accName) {
         const accKey = String(accName);
         delete rainbowCdData[accKey];
@@ -2026,6 +2045,7 @@
         
         if (!isRemoteUpdating) {
             gameRef.child('rainbowCd/acc_' + accKey).remove();
+            gameRef.child('lastModified').set(firebase.database.ServerValue.TIMESTAMP);
         }
 
         renderRainbowOverview();
@@ -2253,7 +2273,6 @@
                         const newUid = 'chip_' + Math.random().toString(36).substr(2, 9);
                         addChip(targetZone, accKey, groupName, 'normal', false, newUid, null);
                         
-                        // 🎯 局部更新：僅儲存目標裝置的紀錄
                         saveTodayDeviceData(targetZone.dataset.device);
 
                         updateStats();
@@ -2296,7 +2315,6 @@
         updateQueueAssignedStatus();
     }
 
-    // 🎯 局部更新：僅更新無任務狀態
     function toggleNoQuestStatus(accName) {
         const accKey = String(accName);
         if (noQuestAccounts[accKey]) {
@@ -2310,6 +2328,7 @@
                 gameRef.child('noQuestAccounts/acc_' + accKey).set(true);
             }
         }
+        gameRef.child('lastModified').set(firebase.database.ServerValue.TIMESTAMP);
         renderQueuesBySelection();
     }
 
@@ -2330,7 +2349,6 @@
         });
     }
 
-    // 🎯 局部更新：僅寫入 groups 佇列順序
     function syncAllGroupsFromDOM() {
         const newGroups = {};
         Object.keys(accountGroups).forEach(g => {
@@ -2346,7 +2364,10 @@
         accountGroups = newGroups;
 
         if (!isRemoteUpdating) {
-            gameRef.child('groups').set(accountGroups);
+            gameRef.update({
+                groups: accountGroups,
+                lastModified: firebase.database.ServerValue.TIMESTAMP
+            });
         }
         updateQueueAssignedStatus();
     }
@@ -2459,15 +2480,14 @@
 	            timeStr = `${hh}:${mm}`;
 	        }
 	
-	        // 💡 修正 1：先切換並儲存任務狀態至 Firebase
 	        toggleChipStatus(uid, accName, groupName, newStatus, timeStr);
 	
-	        // 💡 修正 2：狀態儲存完後，才執行佇列移至隊尾
 	        if (newStatus === 'completed' && groupName && accountGroups[groupName]) {
 	            rotateAccountToTail(groupName, accName);
 	        }
 	    });
 	}
+
     function toggleChipStatus(uid, accName, groupName, newStatus, timeStr = null) {
 	    const affectedDevices = new Set();
 	
@@ -2481,20 +2501,19 @@
 	        let isOverview = c.closest('#pendingOverviewBox') !== null;
 	        updateChipAppearance(c, newStatus, accName, false, isOverview, groupName);
 	
-	        // 💡 修正：優先抓取 c.dataset.device（總覽區晶片有設），找不到才找表格 drop-zone
 	        const devName = c.dataset.device || (c.closest('.drop-zone') ? c.closest('.drop-zone').dataset.device : null);
 	        if (devName) {
 	            affectedDevices.add(devName);
 	        }
 	    });
 	
-	    // 正確呼叫儲存受影響裝置的資料
 	    affectedDevices.forEach(dev => saveTodayDeviceData(dev));
 	
 	    updateStats();
 	    updatePendingOverview();
 	    updateQueueAssignedStatus();
 	}
+
     function updateChipAppearance(chip, status, accName, isHistory, isOverview = false, groupName = '') {
         chip.className = `quest-chip ${isHistory ? 'history-chip' : ''}`;
         if (status === 'completed') chip.classList.add('completed');
@@ -2584,7 +2603,6 @@
         });
     }
 
-    // 🎯 局部更新：旋轉佇列並僅更新特定佇列群組
     function rotateAccountToTail(groupName, accName) {
 	    let list = accountGroups[groupName];
 	    if (!list) return;
@@ -2594,8 +2612,10 @@
 	        list.push(String(accName));   
 	        renderQueuesBySelection();
 	        
-	        // 💡 強制更新該群組順序到 Firebase，確保不遺漏
-	        gameRef.child('groups/' + groupName).set(list, (error) => {
+	        gameRef.update({
+	            ['groups/' + groupName]: list,
+	            lastModified: firebase.database.ServerValue.TIMESTAMP
+	        }, (error) => {
 	            if (error) {
 	                console.error("佇列順序同步失敗:", error);
 	            }
@@ -2631,7 +2651,6 @@
         document.getElementById('nameModalOverlay').classList.remove('show');
     }
 
-    // 結算日專用：這屬於全局重置性寫入，使用定點批次 update 寫入最新算出的數據
 	function confirmShiftToNextDay() {
 	    const inputField = document.getElementById('nextDayInputName');
 	    const defaultDateStr = getFormattedDate(new Date());
@@ -2642,7 +2661,6 @@
 	
 	    yesterdayCompleteTimes = {};
 	    
-	    // 1. 統計今日完成紀錄與計算 R 幣
 	    document.querySelectorAll('.today-zone .quest-chip').forEach(chip => {
 	        let accKey = String(chip.dataset.name);
 	        
@@ -2668,8 +2686,11 @@
 	        });
 	    }
 	
-	    // 2. 準備更新物件：先強制抹除舊的 today 與 yesterday 節點
+	    const newVersion = currentVersion + 1; // 🛡️ 結算時自動跳升版本號
+
 	    const updates = {
+	        version: newVersion,
+	        lastModified: firebase.database.ServerValue.TIMESTAMP,
 	        activeDate: nextDayStr,
 	        yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
 	        coins: safeObjectForFirebase(coinData),
@@ -2681,7 +2702,6 @@
 	        yesterday: null
 	    };
 	
-	    // 3. 將當前的「今日任務」移至「上一次紀錄 (yesterday)」
 	    const newYesterdayData = {};
 	    devices.forEach(device => {
 	        const todayZone = document.querySelector(`.today-zone[data-device="${device}"]`);
@@ -2711,17 +2731,15 @@
 	        updates['yesterday'] = newYesterdayData;
 	    }
 	
-	    // 4. 更新記憶體變數
 	    todayInitialGroups = JSON.parse(JSON.stringify(accountGroups));
 	    activeDateStr = nextDayStr; 
 	    adWatchedData = {}; 
 	    noQuestAccounts = {}; 
 	    selectedGroupNames = new Set(['R少']);
+	    currentVersion = newVersion;
 	
-	    // 5. 將所有異動一次寫入 Firebase
 	    gameRef.update(updates);
 	
-	    // 6. 重新渲染介面
 	    renderDropdownMenu();
 	    renderQueuesBySelection();
 	    renderAdPanel();
@@ -2731,7 +2749,7 @@
 	    updateStats();
 	    updatePendingOverview();
 	    updateQueueAssignedStatus();
-	    alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
+	    alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 資料版本已升級至 v${currentVersion}\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
 	}
 
     function resetTodayData() {
@@ -2744,8 +2762,12 @@
 
             noQuestAccounts = {};
             selectedGroupNames = new Set(['R少']);
+            const newVersion = currentVersion + 1;
+            currentVersion = newVersion;
 
             gameRef.update({
+                version: newVersion,
+                lastModified: firebase.database.ServerValue.TIMESTAMP,
                 today: null,
                 groups: accountGroups,
                 noQuestAccounts: null
@@ -2756,7 +2778,7 @@
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
-            alert('已成功重置當前資料，並恢復佇列順序！');
+            alert(`已成功重置當前資料與佇列順序！(版本: v${currentVersion})`);
         }
     }
 </script>
