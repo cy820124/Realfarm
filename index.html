@@ -362,7 +362,24 @@
             padding-left: 2px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 4px;
+        }
+
+        .btn-quick-cd {
+            background: #e6fffa;
+            color: #234e52;
+            border: 1px solid #b2f5ea;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-quick-cd:hover {
+            background: #b2f5ea;
+            color: #1d4044;
         }
 
         .queue-box {
@@ -687,13 +704,19 @@
             margin-bottom: 12px;
         }
         .fish-group-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: #2c5282;
-            margin-bottom: 6px;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 3px;
-        }
+		    font-size: 13px;
+		    font-weight: bold;
+		    color: #2c5282;
+		    margin-bottom: 6px;
+		    border-bottom: 2px solid #e2e8f0;
+		    padding-bottom: 3px;
+		    
+		    /* 🛠️ 修改這裡：改為 left 排列並加上 gap 間距 */
+		    display: flex;
+		    justify-content: flex-start; /* 從 space-between 改為 flex-start 靠左 */
+		    align-items: center;
+		    gap: 8px; /* 標題與按鈕之間的間隔 */
+		}
         .fish-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
@@ -1033,7 +1056,7 @@
     const db = firebase.database();
     const gameRef = db.ref("game_tracker_v5");
 
-    let currentVersion = 1; // 🛡️ 本地紀錄的當前資料版本號
+    let currentVersion = 1; 
     let selectedGroupNames = new Set();
     let todayInitialGroups = null;
     let accountGroups = null; 
@@ -1105,7 +1128,6 @@
             }
         });
 
-        // 💡 當分頁切回前景時，自動拉取最新資料，並檢查版本號
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 gameRef.once('value', (snapshot) => {
@@ -1203,7 +1225,6 @@
                 noQuestAccounts = {};
                 currentVersion = 1;
                 
-                // 僅在初始化空資料庫時執行一次全初始化寫入
                 gameRef.set({
                     version: 1,
                     lastModified: firebase.database.ServerValue.TIMESTAMP,
@@ -1278,7 +1299,6 @@
         });
     }
 
-    // 🎯 局部更新 helper：僅儲存特定裝置的「今日任務紀錄」
     function saveTodayDeviceData(deviceName) {
         if (isRemoteUpdating || !deviceName) return;
         const zone = document.querySelector(`.today-zone[data-device="${deviceName}"]`);
@@ -1595,6 +1615,61 @@
         renderFishModalContent();
     }
 
+    // 🎯 核心修改：完全依據目前釣魚追蹤清單中的視覺排序（非冷卻中優先 -> 冷卻時間 -> R幣/名稱）
+	function triggerTopAccountsFishCooldown(groupName, count) {
+	    if (!accountGroups || !accountGroups[groupName]) return;
+	
+	    let accounts = [...accountGroups[groupName]];
+	    if (accounts.length === 0) return;
+	
+	    const now = Date.now();
+	
+	    // 完全套用與 renderFishModalContent 相同的排序規則
+	    accounts.sort((a, b) => {
+	        let keyA = String(a);
+	        let keyB = String(b);
+	        let cdA = fishingCdData[keyA] || 0;
+	        let cdB = fishingCdData[keyB] || 0;
+	
+	        let isCdA = now < cdA;
+	        let isCdB = now < cdB;
+	
+	        // 1. 未在冷卻中的排在前面
+	        if (isCdA !== isCdB) return isCdA ? 1 : -1;
+	        // 2. 若都在冷卻中，冷卻時間較短（較快結束）的排前面
+	        if (isCdA && isCdB) return cdA - cdB;
+	
+	        // 3. 冷卻狀態相同，比對 R 幣 (少 -> 多)
+	        let coinA = Number(coinData[keyA]) || 0;
+	        let coinB = Number(coinData[keyB]) || 0;
+	        if (coinA !== coinB) return coinA - coinB;
+	
+	        // 4. 最後比對帳號名稱
+	        return keyA.localeCompare(keyB, 'zh-Hant', { numeric: true });
+	    });
+	
+	    // 直接取排序後最前面的 N 個帳號
+	    let targetAccounts = accounts.slice(0, count);
+	
+	    let updates = {
+	        lastModified: firebase.database.ServerValue.TIMESTAMP
+	    };
+	
+	    targetAccounts.forEach((acc, index) => {
+		    const accKey = String(acc);
+		    // 每個帳號間隔 100 毫秒，確保有明確的先後順序（例如：第一個是 12:00:00.000，第二個是 12:00:00.100 ...）
+		    const staggeredNow = now + (index * 100);
+		    fishingCdData[accKey] = staggeredNow + FISHING_CD_DURATION;
+		    updates['fishingCd/acc_' + accKey] = fishingCdData[accKey];
+		});
+	
+	    if (!isRemoteUpdating) {
+	        gameRef.update(updates);
+	    }
+	
+	    renderFishModalContent();
+	    showToast(`已將【${groupName}】目前排序前 ${targetAccounts.length} 個帳號加入冷卻！`);
+	}
     function renderFishModalContent() {
         const container = document.getElementById('fishModalContentContainer');
         container.innerHTML = '';
@@ -1642,7 +1717,14 @@
 
             const title = document.createElement('div');
             title.className = 'fish-group-title';
-            title.innerText = `🎣 ${groupName}`;
+            
+            title.innerHTML = `
+                <span>🎣 ${groupName}</span>
+                <div style="display: flex; gap: 4px;">
+                    <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 3)">+前3個冷卻</button>
+                    <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 5)">+前5個冷卻</button>
+                </div>
+            `;
             section.appendChild(title);
 
             const grid = document.createElement('div');
@@ -2686,7 +2768,7 @@
 	        });
 	    }
 	
-	    const newVersion = currentVersion + 1; // 🛡️ 結算時自動跳升版本號
+	    const newVersion = currentVersion + 1;
 
 	    const updates = {
 	        version: newVersion,
@@ -2782,6 +2864,5 @@
         }
     }
 </script>
-
 </body>
 </html>
