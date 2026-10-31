@@ -2,6 +2,7 @@
   "name": "Realfarm R幣任務紀錄",
   "short_name": "R幣任務紀錄",
   "start_url": "./",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4a90e2",
