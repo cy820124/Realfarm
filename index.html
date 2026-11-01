@@ -861,6 +861,18 @@
             0% { transform: scale(0.9); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
+
+        .app-heading { position: relative; min-height: 44px; margin: 8px 0; display: flex; align-items: center; justify-content: center; }
+        .app-heading h1 { margin: 0; padding: 0 48px; }
+        .push-settings { position: absolute; left: 0; top: 0; z-index: 1000; }
+        .push-settings > summary { list-style: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; font-size: 21px; color: #4a5568; }
+        .push-settings > summary::-webkit-details-marker { display: none; }
+        .push-settings > summary:hover, .push-settings[open] > summary { background: #e2e8f0; }
+        .push-settings > summary:focus-visible { outline: 2px solid #3182ce; outline-offset: 2px; }
+        .push-settings-panel { position: absolute; left: 0; top: 48px; width: min(300px, calc(100vw - 48px)); box-sizing: border-box; padding: 16px; border: 1px solid #e1e8ed; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px #1a202c24; font-size: 13px; line-height: 1.6; }
+        .push-settings-panel h2 { margin: 0 0 12px; font-size: 15px; color: #2d3748; }
+        .push-settings-panel button { min-height: 40px; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 8px; background: #f7fafc; color: #2d3748; cursor: pointer; font: inherit; margin: 0 4px 6px 0; }
+        .push-settings-panel button:disabled { opacity: .55; cursor: default; }
     </style>
 </head>
 <body>
@@ -878,12 +890,18 @@
     <a href="admin.html" class="admin-link">⚙ 前往後台管理中心</a>
 </div>
 
-<h1>🎮 Realfarm R幣任務紀錄</h1>
-<div style="background:white;padding:12px;border-radius:8px;margin-bottom:10px;font-size:13px;">
-    <button id="pushToggle" type="button" disabled>🔔 開啟背景通知</button>
-    <button id="pushTest" type="button" hidden>傳送測試通知</button>
-    <p id="pushStatus" role="status" aria-live="polite" style="margin:8px 0 0;">正在檢查通知設定…</p>
-    <p style="margin:6px 0 0;color:#718096;">提醒此共用紀錄的釣魚時間與所有帳號彩虹冷卻。iPhone／iPad 請先加入主畫面，再從主畫面開啟並允許通知。</p>
+<div class="app-heading">
+    <h1>🎮 Realfarm R幣任務紀錄</h1>
+    <details class="push-settings" id="pushSettings">
+        <summary aria-label="通知設定" title="通知設定">🔔</summary>
+        <div class="push-settings-panel">
+            <h2>通知設定</h2>
+            <button id="pushToggle" type="button" disabled>🔔 開啟背景通知</button>
+            <button id="pushTest" type="button" hidden>傳送測試通知</button>
+            <p id="pushStatus" role="status" aria-live="polite" style="margin:8px 0 0;">正在檢查通知設定…</p>
+            <p style="margin:8px 0 0;color:#718096;">提醒此共用紀錄的釣魚時間與所有帳號彩虹冷卻。iPhone／iPad 請先加入主畫面，再從主畫面開啟並允許通知。</p>
+        </div>
+    </details>
 </div>
 
 <div class="hint-bar">
@@ -1051,6 +1069,17 @@
 </div>
 
 <script>
+    const pushSettings = document.getElementById('pushSettings');
+    document.addEventListener('click', event => {
+        if (pushSettings.open && !pushSettings.contains(event.target)) pushSettings.open = false;
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && pushSettings.open) {
+            pushSettings.open = false;
+            pushSettings.querySelector('summary').focus();
+        }
+    });
+
     const firebaseConfig = {
         apiKey: "AIzaSyC-5eJaWoM9yQfOtkbjEkm922KQ1Zpbs1A",
         authDomain: "realfarm-todolist.firebaseapp.com",
