@@ -16,6 +16,9 @@
     <!-- Firebase SDK (9.x 相容版) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js"></script>
+    <script src="push-config.js"></script>
 
     <style>
         :root {
@@ -876,6 +879,12 @@
 </div>
 
 <h1>🎮 Realfarm R幣任務紀錄</h1>
+<div style="background:white;padding:12px;border-radius:8px;margin-bottom:10px;font-size:13px;">
+    <button id="pushToggle" type="button" disabled>🔔 開啟背景通知</button>
+    <button id="pushTest" type="button" hidden>傳送測試通知</button>
+    <p id="pushStatus" role="status" aria-live="polite" style="margin:8px 0 0;">正在檢查通知設定…</p>
+    <p style="margin:6px 0 0;color:#718096;">提醒此共用紀錄的釣魚時間與所有帳號彩虹冷卻。iPhone／iPad 請先加入主畫面，再從主畫面開啟並允許通知。</p>
+</div>
 
 <div class="hint-bar">
     <span>👉 點擊：分派至表格 | 長按佇列按鈕：標記無任務/略過</span>
@@ -1197,6 +1206,11 @@
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
+            // Schedule from confirmed cloud values, including updates on other devices.
+            window.dispatchEvent(new CustomEvent('realfarm-reminder-times', { detail: {
+                nextFishingTime: data?.nextFishingTime || null,
+                rainbowCd: data?.rainbowCd || null
+            } }));
             cloudDataGlobal = data; 
             isRemoteUpdating = true;
 
@@ -2864,5 +2878,6 @@
         }
     }
 </script>
+<script src="push.js"></script>
 </body>
 </html>
