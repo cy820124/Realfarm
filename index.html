@@ -1095,7 +1095,6 @@
     const db = firebase.database();
     const gameRef = RealfarmSync.createRef(db.ref("game_tracker_v5"));
 
-    let currentVersion = 1; 
     let selectedGroupNames = new Set();
     let todayInitialGroups = null;
     let accountGroups = null; 
@@ -1242,10 +1241,8 @@
                 helpListData = {};
                 yesterdayCompleteTimes = {};
                 noQuestAccounts = {};
-                currentVersion = 1;
                 
                 gameRef.set({
-                    version: 1,
                     lastModified: firebase.database.ServerValue.TIMESTAMP,
                     devices: devices,
                     groups: accountGroups,
@@ -1253,7 +1250,6 @@
                     activeDate: activeDateStr
                 });
             } else {
-                currentVersion = data.version || 1;
                 accountGroups = data.groups || DEFAULT_GROUPS;
                 todayInitialGroups = data.initialGroups ? data.initialGroups : JSON.parse(JSON.stringify(DEFAULT_GROUPS));
                 devices = (data.devices && data.devices.length > 0) ? data.devices : DEFAULT_DEVICES;
@@ -1313,7 +1309,7 @@
 
             checkReadyFishModalTimer();
 
-            document.getElementById('syncStatus').innerText = `⚡ 雲端已同步 (v${currentVersion})`;
+            document.getElementById('syncStatus').innerText = '⚡ 雲端已同步';
             isRemoteUpdating = false;
         });
     }
@@ -1741,7 +1737,7 @@
                 <span>🎣 ${groupName}</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 3)">+前3個冷卻</button>
-                    <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 5)">+前5個冷卻</button>
+                    <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 4)">+前4個冷卻</button>
                 </div>
             `;
             section.appendChild(title);
@@ -2787,10 +2783,8 @@
 	        });
 	    }
 	
-	    const newVersion = currentVersion + 1;
 
 	    const updates = {
-	        version: newVersion,
 	        lastModified: firebase.database.ServerValue.TIMESTAMP,
 	        activeDate: nextDayStr,
 	        yesterdayCompleteTimes: safeObjectForFirebase(yesterdayCompleteTimes),
@@ -2837,7 +2831,6 @@
 	    adWatchedData = {}; 
 	    noQuestAccounts = {}; 
 	    selectedGroupNames = new Set(['R少']);
-	    currentVersion = newVersion;
 	
 	    const saved = await gameRef.update(updates);
 	    if (!saved.committed) return;
@@ -2851,7 +2844,7 @@
 	    updateStats();
 	    updatePendingOverview();
 	    updateQueueAssignedStatus();
-	    alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 資料版本已升級至 v${currentVersion}\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
+	    alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
 	}
 
     async function resetTodayData() {
@@ -2864,11 +2857,8 @@
 
             noQuestAccounts = {};
             selectedGroupNames = new Set(['R少']);
-            const newVersion = currentVersion + 1;
-            currentVersion = newVersion;
 
             const saved = await gameRef.update({
-                version: newVersion,
                 lastModified: firebase.database.ServerValue.TIMESTAMP,
                 today: null,
                 groups: accountGroups,
@@ -2881,7 +2871,7 @@
             updateStats();
             updatePendingOverview();
             updateQueueAssignedStatus();
-            alert(`已成功重置當前資料與佇列順序！(版本: v${currentVersion})`);
+            alert('已成功重置當前資料與佇列順序！');
         }
     }
 </script>
