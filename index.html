@@ -16,6 +16,7 @@
     <!-- Firebase SDK (9.x 相容版) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="sync-guard.js?v=1"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js"></script>
     <script src="push-config.js"></script>
@@ -1092,7 +1093,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const gameRef = db.ref("game_tracker_v5");
+    const gameRef = RealfarmSync.createRef(db.ref("game_tracker_v5"));
 
     let currentVersion = 1; 
     let selectedGroupNames = new Set();
@@ -1163,31 +1164,6 @@
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.multiselect-dropdown')) {
                 document.getElementById('dropdownMenu').classList.remove('show');
-            }
-        });
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                gameRef.once('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        if (data.version && data.version > currentVersion) {
-                            showToast("⚡ 發現其他裝置有新版本結算，已更新介面！");
-                        }
-                        cloudDataGlobal = data;
-                        currentVersion = data.version || 1;
-                        adWatchedData = safeObjectFromFirebase(data.adWatched);
-                        fishingCdData = safeObjectFromFirebase(data.fishingCd); 
-                        rainbowCdData = safeObjectFromFirebase(data.rainbowCd); 
-                        helpListData = safeObjectFromFirebase(data.helpList);
-                        renderAdPanel();
-                        renderRainbowOverview();
-                        renderHelpOverview();
-                        if (document.getElementById('fishModalOverlay').classList.contains('show')) {
-                            renderFishModalContent();
-                        }
-                    }
-                });
             }
         });
 
@@ -1338,7 +1314,7 @@
             checkReadyFishModalTimer();
 
             document.getElementById('syncStatus').innerText = `⚡ 雲端已同步 (v${currentVersion})`;
-            setTimeout(() => isRemoteUpdating = false, 100);
+            isRemoteUpdating = false;
         });
     }
 
@@ -2776,7 +2752,7 @@
         document.getElementById('nameModalOverlay').classList.remove('show');
     }
 
-	function confirmShiftToNextDay() {
+	async function confirmShiftToNextDay() {
 	    const inputField = document.getElementById('nextDayInputName');
 	    const defaultDateStr = getFormattedDate(new Date());
 	    let inputName = inputField.value.trim();
@@ -2863,7 +2839,8 @@
 	    selectedGroupNames = new Set(['R少']);
 	    currentVersion = newVersion;
 	
-	    gameRef.update(updates);
+	    const saved = await gameRef.update(updates);
+	    if (!saved.committed) return;
 	
 	    renderDropdownMenu();
 	    renderQueuesBySelection();
@@ -2877,7 +2854,7 @@
 	    alert(`🎉 已成功建立新紀錄（${activeDateStr}）！\n✨ 資料版本已升級至 v${currentVersion}\n✨ 已自動計算任務完成（+3）與廣告（+1）的 R 幣加成！`);
 	}
 
-    function resetTodayData() {
+    async function resetTodayData() {
         if (confirm('確定要清空【當前任務紀錄】，並將【佇列順序】恢復為存檔基準的順序嗎？')) {
             document.querySelectorAll('.today-zone').forEach(zone => { zone.innerHTML = ''; });
             
@@ -2890,13 +2867,14 @@
             const newVersion = currentVersion + 1;
             currentVersion = newVersion;
 
-            gameRef.update({
+            const saved = await gameRef.update({
                 version: newVersion,
                 lastModified: firebase.database.ServerValue.TIMESTAMP,
                 today: null,
                 groups: accountGroups,
                 noQuestAccounts: null
             });
+            if (!saved.committed) return;
 
             renderDropdownMenu();
             renderQueuesBySelection();

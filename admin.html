@@ -11,6 +11,7 @@
     <!-- Firebase SDK (9.x 相容版) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="sync-guard.js?v=1"></script>
 
     <style>
         body {
@@ -235,9 +236,10 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const gameRef = db.ref("game_tracker_v5");
+    const gameRef = RealfarmSync.createRef(db.ref("game_tracker_v5"));
 
     let cloudData = null;
+    let adminBaseline = null;
     let showEditMode = false; 
     let showFishingEdit = false;
     let currentSortField = 'name';  
@@ -305,11 +307,10 @@
                 cloudData.fishingDuration = 61;
             }
 
-            if (!isInitialized) {
-                syncFishingInputsToDOM();
-                renderAdminUI();
-                isInitialized = true;
-            }
+            adminBaseline = adminPayload();
+            syncFishingInputsToDOM();
+            renderAdminUI();
+            isInitialized = true;
         });
     });
 
@@ -380,7 +381,8 @@
 
         if (updated) {
             cloudData.nextFishingTime = nextTime.toISOString();
-            saveToCloud();
+            gameRef.update({ nextFishingTime: cloudData.nextFishingTime,
+                lastModified: firebase.database.ServerValue.TIMESTAMP });
         }
 
         const year = nextTime.getFullYear();
@@ -421,7 +423,7 @@
         }
     }
 
-    function saveFishingSettings() {
+    async function saveFishingSettings() {
         const timeVal = document.getElementById('fishingTimeInput').value;
         const intervalVal = document.getElementById('fishingIntervalInput').value;
         const durationVal = document.getElementById('fishingDurationInput').value;
@@ -434,16 +436,22 @@
         cloudData.nextFishingTime = new Date(timeVal).toISOString();
         cloudData.fishingInterval = Number(intervalVal);
         cloudData.fishingDuration = Number(durationVal);
-        saveToCloud();
-        alert('✅ 釣魚設定已成功更新並儲存至雲端！');
+        const saved = await saveToCloud();
+        if (saved?.committed) alert('✅ 釣魚設定已成功更新並儲存至雲端！');
     }
 
-    function saveToCloud() {
-        if (!cloudData) return;
+    function adminPayload() {
         let dataToSave = JSON.parse(JSON.stringify(cloudData));
         dataToSave.coins = safeObjectForFirebase(cloudData.coins);
         dataToSave.accountMappings = safeObjectForFirebase(cloudData.accountMappings);
-        gameRef.set(dataToSave);
+        return dataToSave;
+    }
+
+    function saveToCloud() {
+        if (!cloudData || !adminBaseline) return Promise.resolve({ committed: false });
+        const changes = RealfarmSync.diff(adminBaseline, adminPayload());
+        if (Object.keys(changes).length) changes.lastModified = firebase.database.ServerValue.TIMESTAMP;
+        return gameRef.update(changes);
     }
 
     function exportToText() {
@@ -484,7 +492,7 @@
         alert('📤 已成功將目前設定匯出至上方文字框！');
     }
 
-    function importFromText() {
+    async function importFromText() {
         const text = document.getElementById('importTextInput').value.trim();
         if (!text) {
             alert('請先貼上要匯入的文字！');
@@ -546,7 +554,8 @@
         cloudData.coins = newCoins;
         cloudData.accountMappings = newMappings;
 
-        saveToCloud();
+        const saved = await saveToCloud();
+        if (!saved?.committed) return;
         alert('🎉 成功匯入並更新雲端資料！');
         document.getElementById('importTextInput').value = '';
     }
