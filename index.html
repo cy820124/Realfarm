@@ -16,7 +16,7 @@
     <!-- Firebase SDK (9.x 相容版) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    <script src="sync-guard.js?v=3"></script>
+    <script src="sync-guard.js?v=4"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js"></script>
     <script src="push-config.js"></script>
@@ -1633,6 +1633,7 @@
 
     // 🎯 核心修改：完全依據目前釣魚追蹤清單中的視覺排序（非冷卻中優先 -> 冷卻時間 -> R幣/名稱）
 	function triggerTopAccountsFishCooldown(groupName, count) {
+	    return gameRef.runWhenReady(async () => {
 	    if (!accountGroups || !accountGroups[groupName]) return;
 	
 	    let accounts = [...accountGroups[groupName]];
@@ -1679,16 +1680,27 @@
 		    updates['fishingCd/acc_' + accKey] = fishingCdData[accKey];
 		});
 	
-	    if (!isRemoteUpdating) {
-	        gameRef.update(updates);
-	    }
+	    const saved = await gameRef.update(updates);
+	    if (!saved.committed) return saved;
 	
 	    renderFishModalContent();
 	    showToast(`已將【${groupName}】目前排序前 ${targetAccounts.length} 個帳號加入冷卻！`);
+	    return saved;
+	    });
 	}
+    function queueSingleFishCooldown(accKey) {
+        return gameRef.runWhenReady(async () => {
+            const saved = await gameRef.update({
+                ['fishingCd/acc_' + accKey]: Date.now() + FISHING_CD_DURATION,
+                lastModified: firebase.database.ServerValue.TIMESTAMP
+            });
+            if (saved.committed) renderFishModalContent();
+            return saved;
+        });
+    }
+    let lastFishModalSignature = '';
     function renderFishModalContent() {
         const container = document.getElementById('fishModalContentContainer');
-        container.innerHTML = '';
 
         if (!accountGroups) return;
 
@@ -1699,12 +1711,30 @@
             accountQuestStatus.set(accName, status);
         });
 
+        const now = Date.now();
+        const signature = JSON.stringify({
+            groups: accountGroups, coins: coinData, fishing: fishingCdData, ads: adWatchedData,
+            quests: [...accountQuestStatus],
+            rainbowReady: Object.entries(rainbowCdData).map(([key, end]) => [key, now >= end]),
+            cooldownPhases: Object.entries(fishingCdData).map(([key, end]) =>
+                [key, now < end, now < end - FISHING_CD_OFFSET])
+        });
+        if (signature === lastFishModalSignature && container.childElementCount) {
+            container.querySelectorAll('.fish-btn[data-cd-end] .cd-text').forEach(label => {
+                const end = Number(label.parentElement.dataset.cdEnd);
+                const seconds = Math.max(0, Math.ceil((end - now) / 1000));
+                const minutes = Math.floor(seconds / 60);
+                const text = minutes > 0 ? `${minutes}分` : `${seconds % 60}秒`;
+                if (label.textContent !== text) label.textContent = text;
+            });
+            return;
+        }
+        lastFishModalSignature = signature;
+        container.innerHTML = '';
         let groupOrder = ['R少', 'R中', 'R多', 'IOS'];
         let allGroups = Object.keys(accountGroups);
         let sortedGroups = groupOrder.filter(g => allGroups.includes(g));
         allGroups.forEach(g => { if (!sortedGroups.includes(g)) sortedGroups.push(g); });
-
-        const now = Date.now();
 
         sortedGroups.forEach(groupName => {
             let accounts = [...accountGroups[groupName]];
@@ -1737,8 +1767,8 @@
             title.innerHTML = `
                 <span>🎣 ${groupName}</span>
                 <div style="display: flex; gap: 4px;">
-                    <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 3)">+前3個冷卻</button>
-                    <button class="btn-quick-cd" onclick="triggerTopAccountsFishCooldown('${groupName}', 4)">+前4個冷卻</button>
+                    <button class="btn-quick-cd" data-sync-action onclick="triggerTopAccountsFishCooldown('${groupName}', 3)">+前3個冷卻</button>
+                    <button class="btn-quick-cd" data-sync-action onclick="triggerTopAccountsFishCooldown('${groupName}', 4)">+前4個冷卻</button>
                 </div>
             `;
             section.appendChild(title);
@@ -1761,6 +1791,9 @@
                 const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
 
                 const btn = document.createElement('button');
+                btn.dataset.syncAction = 'fish-cooldown';
+                btn.dataset.account = accKey;
+                btn.dataset.cdEnd = adjustedCdEnd;
                 btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
 
                 let badgeHtml = '';
@@ -1836,14 +1869,7 @@
                     clicks++;
                     if (clicks === 1) {
                         clickTimer = setTimeout(() => {
-                            fishingCdData[accKey] = Date.now() + FISHING_CD_DURATION;
-                            if (!isRemoteUpdating) {
-                                gameRef.update({
-                                    ['fishingCd/acc_' + accKey]: fishingCdData[accKey],
-                                    lastModified: firebase.database.ServerValue.TIMESTAMP
-                                });
-                            }
-                            renderFishModalContent();
+                            queueSingleFishCooldown(accKey);
                             clicks = 0;
                         }, 250);
                     } else if (clicks === 2) {

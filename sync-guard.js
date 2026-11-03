@@ -46,11 +46,12 @@
     function createRef(raw, options = {}) {
         const doc = options.document || global.document;
         const win = options.window || global;
-        const clock = options.now || Date.now;
         const listeners = new Set();
         const pending = [];
+        const idleWaiters = [];
+        let actionTail = Promise.resolve();
         let baseline = null, snapshot = null, connected = false, ready = false;
-        let epoch = 0, running = false, refreshing = null, verifiedAt = 0;
+        let epoch = 0, running = false, refreshing = null;
         let message = '正在同步最新資料，請稍候…';
         const overlay = doc?.createElement?.('div');
         let savingBadge = null, savingTimer = null;
@@ -122,7 +123,6 @@
                     const value = await raw.get();
                     if (epoch !== expectedEpoch || !connected || hidden()) return false;
                     ready = true;
-                    verifiedAt = clock();
                     accept(value);
                     return true;
                 } catch {
@@ -159,7 +159,6 @@
                             queued.expected = clone(result.snapshot.val());
                         }
                     }
-                    verifiedAt = clock();
                 } catch (failure) {
                     error = failure;
                     for (const queued of pending) queued.epoch = -1;
@@ -170,9 +169,26 @@
                 request.resolve(result);
             }
             running = false; paint();
+            for (const resolve of idleWaiters.splice(0)) resolve();
+        }
+        const whenIdle = () => !running && !pending.length ? Promise.resolve()
+            : new Promise(resolve => idleWaiters.push(resolve));
+        function runWhenReady(action) {
+            const scheduled = actionTail.then(async () => {
+                await whenIdle();
+                if (!ready || !connected || hidden()) await refresh();
+                if (!ready || !connected || hidden()) {
+                    notify('尚未完成同步，請確認網路後再操作。');
+                    return { committed: false };
+                }
+                try { return await action(); }
+                catch { notify('操作未完成，請重新同步後再試。'); return { committed: false }; }
+            });
+            actionTail = scheduled.catch(() => {});
+            return scheduled;
         }
         function write(value, replace, callback) {
-            if (!ready || !connected || hidden() || clock() - verifiedAt > 30000) {
+            if (!ready || !connected || hidden()) {
                 const error = new Error('請先同步最新資料，再操作一次。');
                 callback?.(error);
                 refresh();
@@ -200,6 +216,7 @@
                 },
                 once(event, callback) { return refresh().then(() => { callback?.(snapshot); return snapshot; }); },
                 refresh,
+                runWhenReady,
                 isReady: () => ready && connected && !hidden(),
                 off(event, listener) { listeners.delete(listener); }
             };
@@ -220,12 +237,14 @@
         win.addEventListener?.('online', () => refresh());
         win.addEventListener?.('offline', () => { ready = false; epoch++; message = '目前離線，暫停編輯以保護資料。'; paint(); });
         win.addEventListener?.('focus', () => {
-            if (!ready || clock() - verifiedAt > 30000) refresh();
+            if (!ready) refresh();
         });
         for (const type of ['pointerdown', 'touchstart', 'click', 'keydown', 'beforeinput', 'dragstart', 'drop']) {
             doc?.addEventListener(type, event => {
                 if (event.target.closest?.('[data-sync-guard]')) return;
-                if (!ready || !connected || hidden() || running || pending.length || clock() - verifiedAt > 30000) {
+                const queuedAction = event.target.closest?.('[data-sync-action]');
+                if (ready && connected && !hidden() && queuedAction) return;
+                if (!ready || !connected || hidden() || running || pending.length) {
                     event.preventDefault(); event.stopImmediatePropagation();
                     if (!running && !pending.length) refresh();
                 }
