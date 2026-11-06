@@ -4,6 +4,19 @@
     const toggle = document.getElementById('pushToggle');
     const test = document.getElementById('pushTest');
     const status = document.getElementById('pushStatus');
+    const dailyToggle = document.getElementById('dailyReminderEnabled');
+    const dailyTime = document.getElementById('dailyReminderTime');
+    const dailySave = document.getElementById('dailyReminderSave');
+    const dailyStatus = document.getElementById('dailyReminderStatus');
+    const dailyKey = 'realfarm-daily-reminder';
+    let daily = { enabled: false, time: '23:30' };
+    try {
+        const saved = JSON.parse(localStorage.getItem(dailyKey));
+        if (saved && typeof saved.enabled === 'boolean' && /^([01]\d|2[0-3]):[0-5]\d$/.test(saved.time)) daily = saved;
+    } catch { /* Start with the disabled default if local settings are unavailable. */ }
+    dailyToggle.checked = daily.enabled;
+    dailyTime.value = daily.time;
+    let savingDaily = false;
     const key = 'realfarm-push-enabled';
     let enabled = false;
     let messaging;
@@ -13,6 +26,21 @@
     const render = () => {
         toggle.textContent = enabled ? '🔕 關閉背景通知' : '🔔 開啟背景通知';
         test.hidden = !enabled;
+        dailyToggle.disabled = !enabled || savingDaily;
+        dailyTime.disabled = !enabled || savingDaily || !dailyToggle.checked;
+        dailySave.disabled = !enabled || savingDaily;
+    };
+    const applyDaily = value => {
+        if (value && typeof value.enabled === 'boolean' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.time)) {
+            daily = { enabled: value.enabled, time: value.time };
+        }
+        dailyToggle.checked = daily.enabled;
+        dailyTime.value = daily.time;
+        localStorage.setItem(dailyKey, JSON.stringify(daily));
+        dailyStatus.textContent = !enabled ? '請先開啟背景通知。每台裝置各自設定。'
+            : daily.enabled ? `已儲存：每天 ${daily.time}（台灣時間），有未完成任務才提醒。`
+            : '此裝置的定時提醒已關閉。';
+        render();
     };
     const explain = error => {
         console.error('Push setup failed:', error.code || error.name);
@@ -67,10 +95,10 @@
             }
             const token = await messaging.getToken({ vapidKey: config.vapidKey, serviceWorkerRegistration: registration });
             if (!token) throw new Error('No push token');
-            await api('register', { token });
+            const result = await api('register', { token, daily });
             enabled = true;
             localStorage.setItem(key, 'true');
-            render();
+            applyDaily(result.daily);
             report('背景通知已開啟，關閉網頁後仍可接收。提醒可能因網路或省電設定而延遲。');
         };
         toggle.onclick = async () => {
@@ -80,7 +108,7 @@
                     await api('unregister');
                     enabled = false;
                     localStorage.removeItem(key);
-                    render();
+                    applyDaily(daily);
                     report('已關閉此裝置的背景通知。');
                     // Backend removal already stops delivery, even if token deletion fails.
                     await messaging.deleteToken().catch(() => {});
@@ -102,6 +130,24 @@
                 report('已送出測試通知，請查看系統通知。也可關閉網頁，等待下一次計時提醒測試背景接收。');
             } catch (error) { explain(error); }
             finally { test.disabled = false; }
+        };
+        dailyToggle.onchange = () => { render(); dailyStatus.textContent = '設定尚未儲存，請按「儲存此裝置設定」。'; };
+        dailyTime.onchange = () => { dailyStatus.textContent = '設定尚未儲存，請按「儲存此裝置設定」。'; };
+        dailySave.onclick = async () => {
+            if (!enabled || savingDaily) return;
+            if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(dailyTime.value)) {
+                dailyStatus.textContent = '請選擇有效的提醒時間。';
+                return;
+            }
+            const settings = { enabled: dailyToggle.checked, time: dailyTime.value };
+            savingDaily = true;
+            render();
+            dailyStatus.textContent = '正在儲存此裝置設定…';
+            try {
+                const result = await api('daily-settings', { daily: settings });
+                applyDaily(result.daily || settings);
+            } catch (error) { dailyStatus.textContent = `未儲存：${error.message || '請確認網路後重試'}`; }
+            finally { savingDaily = false; render(); }
         };
         messaging.onMessage(payload => {
             const n = payload.notification || {};
