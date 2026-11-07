@@ -762,6 +762,19 @@
             color: #6c757d !important;            
             opacity: 0.75;
         }
+        .fish-btn.rainbow-cooling {
+            border-width: 2px !important;
+            border-style: solid !important;
+            border-color: #f0b0d3;
+            animation: rainbowCoolingPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes rainbowCoolingPulse {
+            0%, 100% { border-color: transparent; }
+            50% { border-color: #f0b0d3; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .fish-btn.rainbow-cooling { animation-duration: 3.2s; }
+        }
         .fish-btn.rainbow-done {
             border: 2px solid #ff79c6 !important;
         }
@@ -1811,12 +1824,13 @@
                 const isAdWatched = !!adWatchedData[accKey];
                 const questStatus = accountQuestStatus.get(accKey);
                 const isRainbowDone = rainbowCdData[accKey] && (now >= rainbowCdData[accKey]);
+                const isRainbowCooling = rainbowCdData[accKey] && (now < rainbowCdData[accKey]);
 
                 const btn = document.createElement('button');
                 btn.dataset.syncAction = 'fish-cooldown';
                 btn.dataset.account = accKey;
                 btn.dataset.cdEnd = adjustedCdEnd;
-                btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
+                btn.className = `fish-btn ${isCd15Min ? 'cooldown' : ''} ${isAdWatched ? 'watched' : ''} ${isRainbowCooling ? 'rainbow-cooling' : ''} ${isRainbowDone ? 'rainbow-done' : ''}`;
 
                 let badgeHtml = '';
                 if (questStatus === 'in-progress') {

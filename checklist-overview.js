@@ -86,7 +86,7 @@ function render() {
     if (empty) empty.hidden = !ready || groups.length > 0;
     if (!ready) {
         const message = document.createElement('span');
-        message.textContent = failed.size ? '📋 Checklist 暫時無法同步' : '📋 Checklist 同步中…';
+        message.textContent = failed.size ? '☑️ 待辦事項暫時無法同步' : '☑️ 待辦事項同步中…';
         message.style.cssText = 'font-size:12px;color:#718096;';
         wrapper.appendChild(message);
     }
@@ -94,8 +94,8 @@ function render() {
         const link = document.createElement('a');
         link.className = 'checklist-pending-group';
         link.href = `checklist.html#checklist-group-${encodeURIComponent(group.id)}`;
-        link.textContent = `📋 ${group.name}`;
-        link.title = '今日 Checklist 未完成分組，點擊開啟清單';
+        link.textContent = `☑️ ${group.name}`;
+        link.title = '今日待辦事項未完成主題，點擊開啟清單';
         link.style.cssText = 'display:inline-flex;align-items:center;min-height:32px;padding:4px 10px;border:1px solid #bee3f8;border-radius:8px;background:#ebf8ff;color:#2b6cb0;font-size:13px;font-weight:600;text-decoration:none;overflow-wrap:anywhere;';
         wrapper.appendChild(link);
     }
