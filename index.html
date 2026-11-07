@@ -766,14 +766,14 @@
             border-width: 2px !important;
             border-style: solid !important;
             border-color: #f0b0d3;
-            animation: rainbowCoolingPulse 1.6s ease-in-out infinite;
+            animation: rainbowCoolingPulse 3.2s ease-in-out infinite;
         }
         @keyframes rainbowCoolingPulse {
             0%, 100% { border-color: transparent; }
             50% { border-color: #f0b0d3; }
         }
         @media (prefers-reduced-motion: reduce) {
-            .fish-btn.rainbow-cooling { animation-duration: 3.2s; }
+            .fish-btn.rainbow-cooling { animation-duration: 6.4s; }
         }
         .fish-btn.rainbow-done {
             border: 2px solid #ff79c6 !important;
@@ -891,6 +891,12 @@
         .push-settings-panel h2 { margin: 0 0 12px; font-size: 15px; color: #2d3748; }
         .push-settings-panel button { min-height: 40px; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 8px; background: #f7fafc; color: #2d3748; cursor: pointer; font: inherit; margin: 0 4px 6px 0; }
         .push-settings-panel button:disabled { opacity: .55; cursor: default; }
+        [hidden] { display: none !important; }
+        .persistent-notes { margin: 20px 0 0; padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+        .persistent-notes h2 { margin: 0 0 6px; font-size: 14px; color: #4a5568; }
+        .persistent-notes textarea { display: block; width: 100%; min-height: 110px; box-sizing: border-box; resize: vertical; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font: inherit; font-size: 14px; line-height: 1.6; }
+        .notes-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: #718096; }
+        .notes-actions button { padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 6px; background: #f7fafc; color: #4a5568; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -899,10 +905,10 @@
 <button class="btn-fish-modal-open" onclick="openFishModal()">🎣 釣魚冷卻追蹤</button>
 
 <!-- 🌈 懸浮彩虹冷卻追蹤按鈕 -->
-<button class="btn-rainbow-modal-open" id="rainbowModalOpenBtn" onclick="openRainbowModal()">🌈 彩虹冷卻追蹤 (0)</button>
+<button class="btn-rainbow-modal-open" id="rainbowModalOpenBtn" onclick="openRainbowModal()" hidden>🌈 彩虹冷卻追蹤 (0)</button>
 
 <!-- 🤝 懸浮待互助清單按鈕 -->
-<button class="btn-help-modal-open" id="helpModalOpenBtn" onclick="openHelpModal()">🤝 待互助清單 (0)</button>
+<button class="btn-help-modal-open" id="helpModalOpenBtn" onclick="openHelpModal()" hidden>🤝 待互助清單 (0)</button>
 
 <div class="top-nav-bar" style="flex-direction: column; align-items: flex-start; gap: 8px;">
     <a href="admin.html" class="admin-link">⚙ 前往後台管理中心</a>
@@ -973,6 +979,17 @@
         <tbody id="tableBody"></tbody>
     </table>
 </div>
+
+<section class="persistent-notes" aria-labelledby="persistentNotesTitle">
+    <h2 id="persistentNotesTitle">📝 備註</h2>
+    <p style="margin:0 0 10px;font-size:12px;color:#718096;">獨立保留，不隨每日紀錄清除；儲存後會同步到其他裝置。</p>
+    <textarea id="persistentNotesInput" aria-label="備註內容" placeholder="記下其他事情…" maxlength="20000"></textarea>
+    <div class="notes-actions">
+        <button type="button" id="persistentNotesSave" disabled>儲存備註</button>
+        <button type="button" id="persistentNotesReload" hidden>載入雲端內容</button>
+        <span id="persistentNotesStatus" role="status" aria-live="polite">正在讀取備註…</span>
+    </div>
+</section>
 
 <!-- 💡 結算與重設按鈕區塊 -->
 <div class="bottom-actions-container">
@@ -1130,6 +1147,41 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const gameRef = RealfarmSync.createRef(db.ref("game_tracker_v5"));
+    const notesInput = document.getElementById('persistentNotesInput');
+    const notesSave = document.getElementById('persistentNotesSave');
+    const notesReload = document.getElementById('persistentNotesReload');
+    const notesStatus = document.getElementById('persistentNotesStatus');
+    let notesRemote = '', notesBase = '', notesDirty = false, notesSaving = false;
+    function renderPersistentNotes(value) {
+        notesRemote = typeof value === 'string' ? value : '';
+        if (!notesDirty && !notesSaving) { notesInput.value = notesRemote; notesBase = notesRemote; }
+        const conflict = notesDirty && notesBase !== notesRemote;
+        notesReload.hidden = !conflict;
+        notesSave.disabled = notesSaving || !notesDirty || conflict;
+        notesStatus.textContent = notesSaving ? '儲存中…' : conflict ? '其他裝置已更新備註。你的文字已保留，請先複製，再載入雲端內容。' : notesDirty ? '尚未儲存' : '已與雲端同步';
+    }
+    notesInput.addEventListener('input', () => {
+        notesDirty = notesInput.value !== notesBase;
+        renderPersistentNotes(notesRemote);
+    });
+    notesReload.addEventListener('click', () => {
+        if (notesDirty && !confirm('載入雲端內容會取代尚未儲存的備註，確定繼續？')) return;
+        notesDirty = false; renderPersistentNotes(notesRemote);
+    });
+    notesSave.addEventListener('click', async () => {
+        if (notesSaving || !notesDirty || notesBase !== notesRemote) return;
+        const draft = notesInput.value;
+        notesSaving = true; renderPersistentNotes(notesRemote);
+        try {
+            const result = await gameRef.update({ persistentNotes: draft || null, lastModified: firebase.database.ServerValue.TIMESTAMP });
+            if (result.committed) { notesBase = draft; notesDirty = notesInput.value !== draft; }
+            notesSaving = false; renderPersistentNotes(notesRemote);
+            if (!result.committed && notesBase === notesRemote) notesStatus.textContent = '尚未儲存，請再試一次。';
+        } catch {
+            notesSaving = false; renderPersistentNotes(notesRemote);
+            notesStatus.textContent = '儲存失敗，文字已保留，請重試。';
+        }
+    });
 
     let selectedGroupNames = new Set();
     let todayInitialGroups = null;
@@ -1246,6 +1298,7 @@
     function listenToFirebase() {
         gameRef.on('value', (snapshot) => {
             const data = snapshot.val();
+            renderPersistentNotes(data?.persistentNotes);
             // Schedule from confirmed cloud values, including updates on other devices.
             window.dispatchEvent(new CustomEvent('realfarm-reminder-times', { detail: {
                 nextFishingTime: data?.nextFishingTime || null,
@@ -2106,6 +2159,7 @@
         if (!box || !openBtn) return;
 
         const helpKeys = Object.keys(helpListData).filter(k => helpListData[k]);
+        openBtn.hidden = helpKeys.length === 0;
         openBtn.innerText = `🤝 待互助清單 (${helpKeys.length})`;
 
         if (helpKeys.length === 0) {
@@ -2238,12 +2292,14 @@
         }
 
         activeRainbowList.sort((a, b) => a.cdEnd - b.cdEnd);
+        openBtn.hidden = activeRainbowList.length === 0;
         
         const countText = ` (${activeRainbowList.length})`;
 	    openBtn.innerText = `🌈 彩虹冷卻追蹤${countText}`;
 	    
 	    const modalRainbowBtn = document.getElementById('modalRainbowBtn');
 	    if (modalRainbowBtn) {
+	        modalRainbowBtn.hidden = activeRainbowList.length === 0;
 	        modalRainbowBtn.innerText = `🌈 彩虹冷卻追蹤${countText}`;
 	    }
         if (activeRainbowList.length === 0) {
