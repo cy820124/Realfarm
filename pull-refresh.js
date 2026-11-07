@@ -1,4 +1,4 @@
-/* Pull to refresh the main page, including home-screen installations. */
+/* Pull to refresh task pages, including home-screen installations. */
 (() => {
     const THRESHOLD = 110;
     const blockedTarget = 'button,a,input,textarea,select,summary,[contenteditable],.quest-chip,.queue-btn,.fish-btn,[draggable="true"]';
@@ -13,7 +13,7 @@
     document.body.appendChild(indicator);
     document.documentElement.style.overscrollBehaviorY = 'contain';
     const atTop = () => (document.scrollingElement?.scrollTop || 0) <= 0 && window.scrollY <= 0;
-    const modalOpen = () => Boolean(document.querySelector('[class*="modal-overlay"].show')) ||
+    const modalOpen = () => Boolean(document.querySelector('[class*="modal-overlay"].show,dialog[open]')) ||
         document.body.style.overflow === 'hidden';
     const reset = () => { gesture = null; if (!refreshing) indicator.hidden = true; };
     async function reload() {
@@ -21,6 +21,7 @@
         indicator.hidden = false;
         indicator.textContent = '正在重新整理…';
         try {
+            if (typeof window.realfarmBeforeReload === 'function') await window.realfarmBeforeReload();
             const perform = () => { window.location.reload(); return { committed: true }; };
             // Finish pending saves before navigating away from the page.
             if (typeof gameRef !== 'undefined' && gameRef.runWhenReady) {

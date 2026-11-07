@@ -21,7 +21,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .toplinks>a.btn.ghost{background:transparent;border:0;padding:0;box-shadow:none}
 .manage-task{flex-wrap:wrap}.manage-task .left{flex:1 1 180px}.manage-task>.actions{flex:0 1 auto;max-width:100%}
 @media(max-width:720px){.shell{padding:12px 10px 36px}h1{font-size:18px}.card{padding:12px}.group-grid{grid-template-columns:1fr}.group-head-actions{width:100%;justify-content:space-between}.date-controls input{max-width:145px}.manage-group .group-head{align-items:flex-start}.manage-group .actions{justify-content:flex-start;width:100%}.manage-task{flex-direction:column;align-items:stretch;gap:8px}.manage-task .left{flex:none;width:100%}.manage-task>.actions{flex:none}}
-.pending-chip{display:flex;flex-direction:column;align-items:flex-start;gap:4px;max-width:100%;text-align:left;touch-action:pan-y}.pending-chip,.pending-chip *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.pending-topic{font-size:11px;color:#8c6b3d;overflow-wrap:anywhere}.pending-task-detail{display:flex;align-items:baseline;gap:5px;max-width:100%}.pending-task-name{min-width:0;overflow-wrap:anywhere}.pending-task-detail .count{flex-shrink:0}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.pending-chip{display:flex;flex-direction:column;align-items:flex-start;gap:4px;max-width:100%;text-align:left;touch-action:pan-y}.pending-chip,.pending-chip *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}.pending-topic{font-size:11px;color:#8c6b3d;overflow-wrap:anywhere}.pending-task-detail{display:flex;align-items:baseline;gap:5px;max-width:100%}.pending-task-name{min-width:0;overflow-wrap:anywhere}.pending-task-detail .count{flex-shrink:0}
 </style>
 </head>
 <body>
@@ -200,6 +201,19 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
  try{firebase.initializeApp(window.firebaseConfig)}catch(e){err(e);return}
  const db=firebase.database(),root=db.ref('daily_checklist');
  const refs={groups:root.child('groups'),tasks:root.child('tasks'),once:root.child('once')};
+ const pendingWrites=new Set();
+ function trackWrite(write){
+  const promise=Promise.resolve(write);pendingWrites.add(promise);
+  promise.then(()=>pendingWrites.delete(promise),()=>pendingWrites.delete(promise));
+  return promise;
+ }
+ window.realfarmBeforeReload=async()=>{
+  let timeout;
+  try{await Promise.race([
+   (async()=>{while(pendingWrites.size)await Promise.all([...pendingWrites])})(),
+   new Promise((_,reject)=>{timeout=setTimeout(()=>reject(new Error('儲存尚未完成')),8000)})
+  ])}finally{clearTimeout(timeout)}
+ };
  let groups={},tasks={},checks={},onceChecks={},day='',pendingOnly=false,dayRef=null,dayHandler=null,viewingHistory=false;
  const todayView=$('todayView'),adminView=$('adminView');
  const el=(tag,cls,text)=>{const v=document.createElement(tag);if(cls)v.className=cls;if(text!==undefined)v.textContent=text;return v};
@@ -216,7 +230,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
   const target=targetForGroup(gid),isOnce=group?.schedule?.type==='once',recordDay=day;
   const ref=root.child(isOnce?`once/${gid}/${id}`:`daily/${recordDay}/${id}`);
   // 使用 transaction，避免不同裝置同時打勾時覆蓋彼此。
-  ref.transaction(old=>{
+  trackWrite(ref.transaction(old=>{
    if(isOnce){
     const current=checklistProgress(old,'9999-12-31',true);
     const viewed=checklistProgress(old,recordDay,true);
@@ -231,7 +245,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
    const current=(old&&typeof old.count==='number')?Math.max(0,Math.floor(old.count)):(old?.done?1:0);
    const next=Math.max(0,Math.min(target,current+delta));
    return next?{count:next,done:next>=target,completedAt:firebase.database.ServerValue.TIMESTAMP}:null;
-  },(error,committed)=>{if(error)err(error)},false);
+  },(error,committed)=>{if(error)err(error)},false)).catch(()=>{});
  }
  function render(){
   const all=[],area=$('groupList');area.replaceChildren();
@@ -308,6 +322,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
   const cancel=()=>{clearTimeout(timer);timer=null;pressed=false;button.classList.remove('long-press-active')};
   button.addEventListener('pointerdown',e=>{
    if(e.button!==0)return;
+   if(e.pointerType==='mouse'){e.preventDefault();button.focus({preventScroll:true})}
    cancel();pressed=true;longPressed=false;pressX=e.clientX;pressY=e.clientY;
    timer=setTimeout(()=>{if(!pressed)return;longPressed=true;cancel();changeCount(id,1);message(`✓ ${name}：已增加 1 次`);},600);
   });
@@ -391,7 +406,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
   setViewedDay(selected,true);
  };
  $('returnToday').onclick=()=>setViewedDay(todayKey(),false);
- function update(path,value){return root.child(path).set(value).then(()=>true).catch(e=>{err(e);return false})}
+ function update(path,value){return trackWrite(root.child(path).set(value)).then(()=>true).catch(e=>{err(e);return false})}
  function ask(promptText,initial){const v=prompt(promptText,initial||'');return v===null?null:v.trim()}
  function scheduleControls(initial){
   const model=initial||{type:'daily'},area=el('div','schedule-controls');
@@ -416,7 +431,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
    const selected=[...weekdays.querySelectorAll('input:checked')].map(input=>Number(input.value));if(!selected.length)throw new Error('請至少選擇一個星期。');return {type:'weekly',weekdays:selected,startDate:date.value};
   }};
  }
- function move(kind,id,direction,items){const idx=items.findIndex(x=>x[0]===id),target=idx+direction;if(idx<0||target<0||target>=items.length)return;const changes={};const a=items[idx][0],b=items[target][0];changes[`${kind}/${a}/order`]=target*100;changes[`${kind}/${b}/order`]=idx*100;return root.update(changes).catch(err)}
+ function move(kind,id,direction,items){const idx=items.findIndex(x=>x[0]===id),target=idx+direction;if(idx<0||target<0||target>=items.length)return;const changes={};const a=items[idx][0],b=items[target][0];changes[`${kind}/${a}/order`]=target*100;changes[`${kind}/${b}/order`]=idx*100;return trackWrite(root.update(changes)).catch(err)}
  function manage(){const wrap=$('manageGroups');wrap.replaceChildren();const groupList=sorted(groups);
   if(!groupList.length)wrap.append(el('div','empty','請先新增一個主題。'));
   for(const [gi,[gid,g]] of groupList.entries()){
@@ -428,17 +443,17 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
     const save=btn('儲存週期','btn',async()=>{let value;try{value=controls.read()}catch(e){message(e.message,true);return}save.disabled=true;const saved=await update(`groups/${gid}/schedule`,value);if(saved)message('✓ 主題週期已儲存');save.disabled=false});
     actions.append(save,btn('取消','btn secondary',()=>scheduleArea.classList.add('hidden')));scheduleArea.replaceChildren(controls.element,actions);scheduleArea.classList.remove('hidden');
    }));
-   ops.append(btn('↑','btn secondary tiny',()=>move('groups',gid,-1,groupList)),btn('↓','btn secondary tiny',()=>move('groups',gid,1,groupList)),btn('改名','btn secondary tiny',()=>{const n=ask('修改主題名稱',g.name);if(n)update(`groups/${gid}/name`,n)}),btn('設定連結','btn secondary tiny',()=>{const input=ask('請貼上此主題的回報群組網址（http:// 或 https://；清空即可移除）',g.reportUrl||'');if(input===null)return;if(input&&!validGroupUrl(input)){message('請輸入以 https:// 或 http:// 開頭的完整網址',true);return}update(`groups/${gid}/reportUrl`,input||null)}),btn('設定次數','btn secondary tiny',()=>{const n=ask('此主題每次執行、每項任務需要完成幾次？（1～99）',String(targetForGroup(gid)));if(n===null)return;const value=Number(n);if(!Number.isInteger(value)||value<1||value>99){message('請輸入 1～99 的整數',true);return}update(`groups/${gid}/repeatCount`,value)}),btn('刪除主題','btn danger tiny',()=>{const n=groupedTasks(gid).length;if(!confirm(`確定刪除「${g.name}」及其中 ${n} 個任務？`))return;const changes={[`groups/${gid}`]:null};Object.entries(tasks).forEach(([tid,t])=>{if(t.groupId===gid)changes[`tasks/${tid}`]=null});root.update(changes).catch(err)}));head.append(left,ops);box.append(head);
+   ops.append(btn('↑','btn secondary tiny',()=>move('groups',gid,-1,groupList)),btn('↓','btn secondary tiny',()=>move('groups',gid,1,groupList)),btn('改名','btn secondary tiny',()=>{const n=ask('修改主題名稱',g.name);if(n)update(`groups/${gid}/name`,n)}),btn('設定連結','btn secondary tiny',()=>{const input=ask('請貼上此主題的回報群組網址（http:// 或 https://；清空即可移除）',g.reportUrl||'');if(input===null)return;if(input&&!validGroupUrl(input)){message('請輸入以 https:// 或 http:// 開頭的完整網址',true);return}update(`groups/${gid}/reportUrl`,input||null)}),btn('設定次數','btn secondary tiny',()=>{const n=ask('此主題每次執行、每項任務需要完成幾次？（1～99）',String(targetForGroup(gid)));if(n===null)return;const value=Number(n);if(!Number.isInteger(value)||value<1||value>99){message('請輸入 1～99 的整數',true);return}update(`groups/${gid}/repeatCount`,value)}),btn('刪除主題','btn danger tiny',()=>{const n=groupedTasks(gid).length;if(!confirm(`確定刪除「${g.name}」及其中 ${n} 個任務？`))return;const changes={[`groups/${gid}`]:null};Object.entries(tasks).forEach(([tid,t])=>{if(t.groupId===gid)changes[`tasks/${tid}`]=null});trackWrite(root.update(changes)).catch(err)}));head.append(left,ops);box.append(head);
    box.append(scheduleArea);
    const items=groupedTasks(gid);for(const [idx,[tid,t]] of items.entries()){
     const tr=el('div','manage-task'),desc=el('div','left'),actions=el('div','actions');desc.append(el('strong','',t.name));if(t.note)desc.append(el('div','small muted',t.note));
-    actions.append(btn('↑','btn secondary tiny',()=>move('tasks',tid,-1,items)),btn('↓','btn secondary tiny',()=>move('tasks',tid,1,items)),btn('編輯','btn secondary tiny',async()=>{const name=ask('任務名稱',t.name);if(!name)return;const note=ask('備註（可留空）',t.note||'');if(note===null)return;await root.update({[`tasks/${tid}/name`]:name,[`tasks/${tid}/note`]:note}).catch(err)}),btn('刪除','btn danger tiny',()=>{if(confirm(`刪除任務「${t.name}」？`))update(`tasks/${tid}`,null)}));tr.append(desc,actions);box.append(tr)
+    actions.append(btn('↑','btn secondary tiny',()=>move('tasks',tid,-1,items)),btn('↓','btn secondary tiny',()=>move('tasks',tid,1,items)),btn('編輯','btn secondary tiny',async()=>{const name=ask('任務名稱',t.name);if(!name)return;const note=ask('備註（可留空）',t.note||'');if(note===null)return;await trackWrite(root.update({[`tasks/${tid}/name`]:name,[`tasks/${tid}/note`]:note})).catch(err)}),btn('刪除','btn danger tiny',()=>{if(confirm(`刪除任務「${t.name}」？`))update(`tasks/${tid}`,null)}));tr.append(desc,actions);box.append(tr)
    }
-   const form=el('form','form-row'),inp=el('input','field');inp.placeholder='新增此主題的任務';inp.maxLength=120;inp.required=true;const add=el('button','btn','新增任務');add.type='submit';form.append(inp,add);form.onsubmit=e=>{e.preventDefault();const name=inp.value.trim();if(!name)return;refs.tasks.push({name,groupId:gid,note:'',enabled:true,order:items.length*100}).then(()=>inp.value='').catch(err)};box.append(form);wrap.append(box)
+   const form=el('form','form-row'),inp=el('input','field');inp.placeholder='新增此主題的任務';inp.maxLength=120;inp.required=true;const add=el('button','btn','新增任務');add.type='submit';form.append(inp,add);form.onsubmit=e=>{e.preventDefault();const name=inp.value.trim();if(!name)return;trackWrite(refs.tasks.push({name,groupId:gid,note:'',enabled:true,order:items.length*100})).then(()=>inp.value='').catch(err)};box.append(form);wrap.append(box)
   }
  }
  const newGroupControls=scheduleControls();$('newGroupSchedule').append(newGroupControls.element);
- $('addGroupForm').onsubmit=e=>{e.preventDefault();const input=$('newGroupName'),name=input.value.trim();if(!name)return;let schedule;try{schedule=newGroupControls.read()}catch(error){message(error.message,true);return}refs.groups.push({name,order:sorted(groups).length*100,repeatCount:1,schedule}).then(()=>input.value='').catch(err)};
+ $('addGroupForm').onsubmit=e=>{e.preventDefault();const input=$('newGroupName'),name=input.value.trim();if(!name)return;let schedule;try{schedule=newGroupControls.read()}catch(error){message(error.message,true);return}trackWrite(refs.groups.push({name,order:sorted(groups).length*100,repeatCount:1,schedule})).then(()=>input.value='').catch(err)};
  $('showAll').onclick=()=>{pendingOnly=false;render()};$('showPending').onclick=()=>{pendingOnly=true;render()};
  function navigate(admin){todayView.classList.toggle('hidden',admin);adminView.classList.toggle('hidden',!admin);$('goAdmin').classList.toggle('hidden',admin);document.title=admin?'清單管理｜Realfarm':'每日待辦事項';window.scrollTo(0,0)}
  $('goAdmin').onclick=()=>navigate(true);$('goToday').onclick=()=>navigate(false);
@@ -447,4 +462,6 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
  refs.once.on('value',s=>{onceChecks=s.val()||{};render()},err);
  bindDay();setInterval(bindDay,30000);window.addEventListener('focus',bindDay);document.addEventListener('visibilitychange',()=>{if(!document.hidden)bindDay()});
 })();
-</script></body></html>
+</script>
+<script src="pull-refresh.js?v=2"></script>
+</body></html>
