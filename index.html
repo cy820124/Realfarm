@@ -1165,6 +1165,12 @@
     const notesReload = document.getElementById('persistentNotesReload');
     const notesStatus = document.getElementById('persistentNotesStatus');
     const notesDialog = document.getElementById('notesDialog');
+    notesDialog.addEventListener('click', event => {
+        if (event.target !== notesDialog) return;
+        const bounds = notesDialog.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right ||
+            event.clientY < bounds.top || event.clientY > bounds.bottom) notesDialog.close();
+    });
     function openNotesDialog() {
         if (!notesDialog.open) notesDialog.showModal();
     }

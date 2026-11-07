@@ -21,7 +21,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .toplinks>a.btn.ghost{background:transparent;border:0;padding:0;box-shadow:none}
 .manage-task{flex-wrap:wrap}.manage-task .left{flex:1 1 180px}.manage-task>.actions{flex:0 1 auto;max-width:100%}
 @media(max-width:720px){.shell{padding:12px 10px 36px}h1{font-size:18px}.card{padding:12px}.group-grid{grid-template-columns:1fr}.group-head-actions{width:100%;justify-content:space-between}.date-controls input{max-width:145px}.manage-group .group-head{align-items:flex-start}.manage-group .actions{justify-content:flex-start;width:100%}.manage-task{flex-direction:column;align-items:stretch;gap:8px}.manage-task .left{flex:none;width:100%}.manage-task>.actions{flex:none}}
-.pending-chip{display:flex;flex-direction:column;align-items:flex-start;gap:4px;max-width:100%;text-align:left}.pending-topic{font-size:11px;color:#8c6b3d;overflow-wrap:anywhere}.pending-task-detail{display:flex;align-items:baseline;gap:5px;max-width:100%}.pending-task-name{min-width:0;overflow-wrap:anywhere}.pending-task-detail .count{flex-shrink:0}
+.pending-chip{display:flex;flex-direction:column;align-items:flex-start;gap:4px;max-width:100%;text-align:left;touch-action:pan-y}.pending-chip,.pending-chip *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.pending-topic{font-size:11px;color:#8c6b3d;overflow-wrap:anywhere}.pending-task-detail{display:flex;align-items:baseline;gap:5px;max-width:100%}.pending-task-name{min-width:0;overflow-wrap:anywhere}.pending-task-detail .count{flex-shrink:0}
 </style>
 </head>
 <body>
@@ -316,6 +316,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
   button.addEventListener('pointercancel',cancel);
   button.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')cancel()});
   button.addEventListener('contextmenu',e=>e.preventDefault());
+  button.addEventListener('selectstart',e=>e.preventDefault());
   button.addEventListener('click',e=>{
    if(longPressed){e.preventDefault();longPressed=false;return}
    copyTaskName(name);
