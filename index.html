@@ -877,7 +877,15 @@
         }
 
         .app-heading { position: relative; min-height: 44px; margin: 8px 0; display: flex; align-items: center; justify-content: center; }
-        .app-heading h1 { margin: 0; padding: 0 8px; }
+        .app-heading h1 { margin: 0; padding: 0 44px; }
+        .notes-open { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: #718096; font-size: 20px; cursor: pointer; }
+        .notes-open:hover { background: #edf2f7; }
+        .app-heading > .notes-open { position: absolute; left: 0; top: 2px; }
+        .notes-dialog { width: min(440px, calc(100vw - 32px)); max-height: 85dvh; padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; overflow-y: auto; box-shadow: 0 12px 40px #0003; }
+        .notes-dialog::backdrop { background: #1a202c66; }
+        .notes-dialog-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; }
+        .notes-dialog-heading h2 { margin: 0; font-size: 16px; }
+        .notes-close { border: 0; background: #edf2f7; border-radius: 6px; width: 36px; height: 36px; cursor: pointer; color: #4a5568; font-size: 22px; }
         .app-footer { max-width: 360px; margin: 32px auto 12px; padding: 12px 0; border-top: 1px solid #e2e8f0; text-align: left; display: grid; grid-template-columns: auto auto; justify-content: center; align-items: start; gap: 0 8px; }
         .app-footer { position: relative; }
         .app-footer .push-settings-panel { position: absolute; left: 0; bottom: 58px; width: 100%; z-index: 1000; border: 1px solid #e1e8ed; border-radius: 10px; box-shadow: 0 8px 28px #1a202c24; }
@@ -892,7 +900,7 @@
         .push-settings-panel button { min-height: 40px; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 8px; background: #f7fafc; color: #2d3748; cursor: pointer; font: inherit; margin: 0 4px 6px 0; }
         .push-settings-panel button:disabled { opacity: .55; cursor: default; }
         [hidden] { display: none !important; }
-        .persistent-notes { margin: 20px 0 0; padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+        .persistent-notes { margin: 0; background: #fff; }
         .persistent-notes h2 { margin: 0 0 6px; font-size: 14px; color: #4a5568; }
         .persistent-notes textarea { display: block; width: 100%; min-height: 110px; box-sizing: border-box; resize: vertical; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font: inherit; font-size: 14px; line-height: 1.6; }
         .notes-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: #718096; }
@@ -915,6 +923,7 @@
 </div>
 
 <div class="app-heading">
+    <button type="button" class="notes-open" id="mainNotesOpen" aria-label="開啟備註" title="備註" onclick="openNotesDialog()">📝</button>
     <h1>🎮 Realfarm R幣任務紀錄</h1>
 
 </div>
@@ -980,16 +989,20 @@
     </table>
 </div>
 
-<section class="persistent-notes" aria-labelledby="persistentNotesTitle">
-    <h2 id="persistentNotesTitle">📝 備註</h2>
-    <p style="margin:0 0 10px;font-size:12px;color:#718096;">獨立保留，不隨每日紀錄清除；儲存後會同步到其他裝置。</p>
-    <textarea id="persistentNotesInput" aria-label="備註內容" placeholder="記下其他事情…" maxlength="20000"></textarea>
+<dialog id="notesDialog" class="notes-dialog" aria-labelledby="persistentNotesTitle">
+<section class="persistent-notes">
+    <div class="notes-dialog-heading">
+        <h2 id="persistentNotesTitle">📝 備註</h2>
+        <button type="button" class="notes-close" aria-label="關閉備註" onclick="document.getElementById('notesDialog').close()">&times;</button>
+    </div>
+    <p style="margin:0 0 10px;font-size:12px;color:#718096;">停止輸入後自動儲存並同步，不隨每日紀錄清除。</p>
+    <textarea id="persistentNotesInput" data-sync-action="notes-draft" aria-label="備註內容" placeholder="記下其他事情…" maxlength="20000"></textarea>
     <div class="notes-actions">
-        <button type="button" id="persistentNotesSave" disabled>儲存備註</button>
         <button type="button" id="persistentNotesReload" hidden>載入雲端內容</button>
         <span id="persistentNotesStatus" role="status" aria-live="polite">正在讀取備註…</span>
     </div>
 </section>
+</dialog>
 
 <!-- 💡 結算與重設按鈕區塊 -->
 <div class="bottom-actions-container">
@@ -1005,12 +1018,13 @@
             <div>
                 <div id="fishModalContentContainer"></div>
                 
-                <div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <div style="margin-top: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;">
                     <button id="modalRainbowBtn" onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻追蹤</button>
+                    <button type="button" class="notes-open" id="fishNotesOpen" aria-label="開啟備註" title="備註" onclick="openNotesDialog()" style="flex-shrink:0;">📝</button>
                     <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
                            onblur="triggerFishCooldownByInput()"
                            onkeypress="if(event.key === 'Enter') this.blur()"
-                           style="flex: 1; max-width: 220px; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
+                           style="flex: 1 1 160px; min-width: 0; max-width: 220px; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
                 </div>
             </div>
             <div>
@@ -1148,40 +1162,54 @@
     const db = firebase.database();
     const gameRef = RealfarmSync.createRef(db.ref("game_tracker_v5"));
     const notesInput = document.getElementById('persistentNotesInput');
-    const notesSave = document.getElementById('persistentNotesSave');
     const notesReload = document.getElementById('persistentNotesReload');
     const notesStatus = document.getElementById('persistentNotesStatus');
+    const notesDialog = document.getElementById('notesDialog');
+    function openNotesDialog() {
+        if (!notesDialog.open) notesDialog.showModal();
+    }
     let notesRemote = '', notesBase = '', notesDirty = false, notesSaving = false;
+    let notesTimer = null, notesComposing = false, notesSaveError = false;
+    function scheduleNotesSave(delay = 800) {
+        clearTimeout(notesTimer); notesTimer = null;
+        if (!notesDirty || notesSaving || notesComposing || notesBase !== notesRemote) return;
+        notesTimer = setTimeout(() => { notesTimer = null; savePersistentNotes(); }, delay);
+    }
     function renderPersistentNotes(value) {
         notesRemote = typeof value === 'string' ? value : '';
         if (!notesDirty && !notesSaving) { notesInput.value = notesRemote; notesBase = notesRemote; }
         const conflict = notesDirty && notesBase !== notesRemote;
-        notesReload.hidden = !conflict;
-        notesSave.disabled = notesSaving || !notesDirty || conflict;
-        notesStatus.textContent = notesSaving ? '儲存中…' : conflict ? '其他裝置已更新備註。你的文字已保留，請先複製，再載入雲端內容。' : notesDirty ? '尚未儲存' : '已與雲端同步';
+        notesReload.hidden = !conflict || notesSaving;
+        notesStatus.textContent = notesSaving ? '儲存中…' : conflict ? '其他裝置已更新備註。你的文字已保留，請先複製，再載入雲端內容。' : notesSaveError ? '暫時無法儲存，文字已保留，連線恢復後會自動重試。' : notesDirty ? '等待自動儲存…' : '已自動儲存・與雲端同步';
+        if (notesDirty && !notesSaving && !notesTimer) scheduleNotesSave(notesSaveError ? 3000 : 800);
     }
     notesInput.addEventListener('input', () => {
         notesDirty = notesInput.value !== notesBase;
+        notesSaveError = false;
         renderPersistentNotes(notesRemote);
+        scheduleNotesSave();
     });
+    notesInput.addEventListener('compositionstart', () => { notesComposing = true; clearTimeout(notesTimer); notesTimer = null; });
+    notesInput.addEventListener('compositionend', () => { notesComposing = false; scheduleNotesSave(); });
+    notesDialog.addEventListener('close', () => { void savePersistentNotes(); });
     notesReload.addEventListener('click', () => {
         if (notesDirty && !confirm('載入雲端內容會取代尚未儲存的備註，確定繼續？')) return;
-        notesDirty = false; renderPersistentNotes(notesRemote);
+        clearTimeout(notesTimer); notesTimer = null;
+        notesDirty = false; notesSaveError = false; renderPersistentNotes(notesRemote);
     });
-    notesSave.addEventListener('click', async () => {
-        if (notesSaving || !notesDirty || notesBase !== notesRemote) return;
+    async function savePersistentNotes() {
+        clearTimeout(notesTimer); notesTimer = null;
+        if (notesSaving || !notesDirty || notesComposing || notesBase !== notesRemote) return;
+        if (!gameRef.isReady()) { notesSaveError = true; renderPersistentNotes(notesRemote); return; }
         const draft = notesInput.value;
-        notesSaving = true; renderPersistentNotes(notesRemote);
+        notesSaving = true; notesSaveError = false; renderPersistentNotes(notesRemote);
         try {
             const result = await gameRef.update({ persistentNotes: draft || null, lastModified: firebase.database.ServerValue.TIMESTAMP });
             if (result.committed) { notesBase = draft; notesDirty = notesInput.value !== draft; }
-            notesSaving = false; renderPersistentNotes(notesRemote);
-            if (!result.committed && notesBase === notesRemote) notesStatus.textContent = '尚未儲存，請再試一次。';
-        } catch {
-            notesSaving = false; renderPersistentNotes(notesRemote);
-            notesStatus.textContent = '儲存失敗，文字已保留，請重試。';
-        }
-    });
+            else notesSaveError = true;
+        } catch { notesSaveError = true; }
+        finally { notesSaving = false; renderPersistentNotes(notesRemote); }
+    }
 
     let selectedGroupNames = new Set();
     let todayInitialGroups = null;
