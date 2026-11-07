@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>每日任務清單</title>
+<title>每日待辦事項</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4a90e2">
 <link rel="apple-touch-icon" href="icon.png">
@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 <div class="shell">
 <header>
 <div>
-<h1>✅ 每日任務清單</h1>
+<h1>☑️ 每日待辦事項</h1>
 <div class="small muted" id="dateLabel">
 </div>
 </div>
@@ -439,7 +439,7 @@ function pendingChecklistGroups({ groups = {}, tasks = {}, checks = {}, once = {
  const newGroupControls=scheduleControls();$('newGroupSchedule').append(newGroupControls.element);
  $('addGroupForm').onsubmit=e=>{e.preventDefault();const input=$('newGroupName'),name=input.value.trim();if(!name)return;let schedule;try{schedule=newGroupControls.read()}catch(error){message(error.message,true);return}refs.groups.push({name,order:sorted(groups).length*100,repeatCount:1,schedule}).then(()=>input.value='').catch(err)};
  $('showAll').onclick=()=>{pendingOnly=false;render()};$('showPending').onclick=()=>{pendingOnly=true;render()};
- function navigate(admin){todayView.classList.toggle('hidden',admin);adminView.classList.toggle('hidden',!admin);$('goAdmin').classList.toggle('hidden',admin);document.title=admin?'清單管理｜Realfarm':'每日任務清單';window.scrollTo(0,0)}
+ function navigate(admin){todayView.classList.toggle('hidden',admin);adminView.classList.toggle('hidden',!admin);$('goAdmin').classList.toggle('hidden',admin);document.title=admin?'清單管理｜Realfarm':'每日待辦事項';window.scrollTo(0,0)}
  $('goAdmin').onclick=()=>navigate(true);$('goToday').onclick=()=>navigate(false);
  refs.groups.on('value',s=>{groups=s.val()||{};render();manage();$('sync').textContent='☁ 已同步'},err);
  refs.tasks.on('value',s=>{tasks=s.val()||{};render();manage();$('sync').textContent='☁ 已同步'},err);
