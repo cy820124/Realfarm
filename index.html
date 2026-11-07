@@ -1126,6 +1126,9 @@
                         style="font:inherit;min-height:40px;min-width:100px;padding:0 8px;box-sizing:border-box;">
                     <span>台灣時間</span>
                 </label>
+                <div id="dailyReminderExtraTimes"></div>
+                <button id="dailyReminderAddTime" type="button" disabled>＋ 新增提醒時間</button>
+                <p style="margin:0 0 8px;color:#718096;font-size:12px;">可設定最多 12 個時間。每個時間都會檢查，有未完成任務才通知。</p>
                 <button id="dailyReminderSave" type="button" disabled>儲存此裝置設定</button>
                 <p id="dailyReminderStatus" role="status" aria-live="polite" style="margin:4px 0 0;color:#718096;">請先開啟背景通知。每台裝置各自設定。</p>
             </fieldset>
@@ -3028,7 +3031,7 @@
         }
     }
 </script>
-<script src="push.js?v=2"></script>
+<script src="push.js?v=3"></script>
 <script src="pull-refresh.js?v=2"></script>
 <script src="checklist-overview.js?v=5"></script>
 </body>

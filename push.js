@@ -6,13 +6,22 @@
     const status = document.getElementById('pushStatus');
     const dailyToggle = document.getElementById('dailyReminderEnabled');
     const dailyTime = document.getElementById('dailyReminderTime');
+    const dailyExtras = document.getElementById('dailyReminderExtraTimes');
+    const dailyAddTime = document.getElementById('dailyReminderAddTime');
     const dailySave = document.getElementById('dailyReminderSave');
     const dailyStatus = document.getElementById('dailyReminderStatus');
     const dailyKey = 'realfarm-daily-reminder';
-    let daily = { enabled: false, time: '23:30' };
+    const validTime = time => typeof time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+    const normalizeDaily = value => {
+        const times = value?.times !== undefined ? value.times : [value?.time];
+        if (typeof value?.enabled !== 'boolean' || !Array.isArray(times) || !times.length || times.length > 12 || times.some(time => !validTime(time))) return null;
+        const unique = [...new Set(times)].sort();
+        return { enabled: value.enabled, time: unique[0], times: unique };
+    };
+    let daily = { enabled: false, time: '23:30', times: ['23:30'] };
     try {
         const saved = JSON.parse(localStorage.getItem(dailyKey));
-        if (saved && typeof saved.enabled === 'boolean' && /^([01]\d|2[0-3]):[0-5]\d$/.test(saved.time)) daily = saved;
+        daily = normalizeDaily(saved) || daily;
     } catch { /* Start with the disabled default if local settings are unavailable. */ }
     dailyToggle.checked = daily.enabled;
     dailyTime.value = daily.time;
@@ -27,21 +36,44 @@
         toggle.textContent = enabled ? '🔕 關閉背景通知' : '🔔 開啟背景通知';
         test.hidden = !enabled;
         dailyToggle.disabled = !enabled || savingDaily;
-        dailyTime.disabled = !enabled || savingDaily || !dailyToggle.checked;
+        const disabled = !enabled || savingDaily || !dailyToggle.checked;
+        dailyTime.disabled = disabled;
+        dailyExtras.querySelectorAll('input,button').forEach(element => { element.disabled = disabled; });
+        dailyAddTime.disabled = disabled || dailyExtras.querySelectorAll('input').length >= 11;
         dailySave.disabled = !enabled || savingDaily;
     };
-    const applyDaily = value => {
-        if (value && typeof value.enabled === 'boolean' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.time)) {
-            daily = { enabled: value.enabled, time: value.time };
-        }
-        dailyToggle.checked = daily.enabled;
+    const markDailyChanged = () => { dailyStatus.textContent = '設定尚未儲存，請按「儲存此裝置設定」。'; };
+    function appendDailyTime(time = '') {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:8px 0;';
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;align-items:center;gap:8px;';
+        label.textContent = '每天';
+        const input = document.createElement('input');
+        input.type = 'time'; input.value = time; input.setAttribute('aria-label', '額外提醒時間');
+        input.style.cssText = 'font:inherit;min-height:40px;min-width:100px;padding:0 8px;box-sizing:border-box;';
+        input.onchange = markDailyChanged; label.append(input);
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.textContent = '移除'; remove.setAttribute('aria-label', '移除此提醒時間');
+        remove.onclick = () => { row.remove(); render(); markDailyChanged(); };
+        row.append(label, remove); dailyExtras.append(row); render();
+    }
+    function fillDailyTimes() {
         dailyTime.value = daily.time;
+        dailyExtras.replaceChildren();
+        daily.times.slice(1).forEach(time => appendDailyTime(time));
+    }
+    const applyDaily = value => {
+        daily = normalizeDaily(value) || daily;
+        dailyToggle.checked = daily.enabled;
+        fillDailyTimes();
         localStorage.setItem(dailyKey, JSON.stringify(daily));
         dailyStatus.textContent = !enabled ? '請先開啟背景通知。每台裝置各自設定。'
-            : daily.enabled ? `已儲存：每天 ${daily.time}（台灣時間），有未完成任務才提醒。`
+            : daily.enabled ? `已儲存：每天 ${daily.times.join('、')}（台灣時間），有未完成任務才提醒。`
             : '此裝置的定時提醒已關閉。';
         render();
     };
+    fillDailyTimes();
     const explain = error => {
         console.error('Push setup failed:', error.code || error.name);
         report(error.message || '通知設定未完成，請檢查網路與設定後重試。');
@@ -132,14 +164,16 @@
             finally { test.disabled = false; }
         };
         dailyToggle.onchange = () => { render(); dailyStatus.textContent = '設定尚未儲存，請按「儲存此裝置設定」。'; };
-        dailyTime.onchange = () => { dailyStatus.textContent = '設定尚未儲存，請按「儲存此裝置設定」。'; };
+        dailyTime.onchange = markDailyChanged;
+        dailyAddTime.onclick = () => { if (dailyExtras.querySelectorAll('input').length < 11) { appendDailyTime(); markDailyChanged(); } };
         dailySave.onclick = async () => {
             if (!enabled || savingDaily) return;
-            if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(dailyTime.value)) {
+            const times = [dailyTime.value, ...Array.from(dailyExtras.querySelectorAll('input'), input => input.value)];
+            const settings = normalizeDaily({ enabled: dailyToggle.checked, times });
+            if (!settings) {
                 dailyStatus.textContent = '請選擇有效的提醒時間。';
                 return;
             }
-            const settings = { enabled: dailyToggle.checked, time: dailyTime.value };
             savingDaily = true;
             render();
             dailyStatus.textContent = '正在儲存此裝置設定…';
