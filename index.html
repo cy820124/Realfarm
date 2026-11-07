@@ -864,13 +864,17 @@
         }
 
         .app-heading { position: relative; min-height: 44px; margin: 8px 0; display: flex; align-items: center; justify-content: center; }
-        .app-heading h1 { margin: 0; padding: 0 48px; }
-        .push-settings { position: absolute; left: 0; top: 0; z-index: 1000; }
-        .push-settings > summary { list-style: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; font-size: 21px; color: #4a5568; }
+        .app-heading h1 { margin: 0; padding: 0 8px; }
+        .app-footer { max-width: 360px; margin: 32px auto 12px; padding: 12px 0; border-top: 1px solid #e2e8f0; text-align: left; display: grid; grid-template-columns: auto auto; justify-content: center; align-items: start; gap: 0 8px; }
+        .app-footer { position: relative; }
+        .app-footer .push-settings-panel { position: absolute; left: 0; bottom: 58px; width: 100%; z-index: 1000; border: 1px solid #e1e8ed; border-radius: 10px; box-shadow: 0 8px 28px #1a202c24; }
+        .footer-checklist-link { display: flex; align-items: center; min-height: 44px; padding: 0 10px; color: #718096; text-decoration: none; font-size: 13px; }
+        .footer-checklist-link:hover { color: #3182ce; }
+        .push-settings > summary { list-style: none; min-height: 44px; padding: 0 10px; display: flex; align-items: center; border-radius: 6px; cursor: pointer; font-size: 13px; color: #4a5568; }
         .push-settings > summary::-webkit-details-marker { display: none; }
         .push-settings > summary:hover, .push-settings[open] > summary { background: #e2e8f0; }
         .push-settings > summary:focus-visible { outline: 2px solid #3182ce; outline-offset: 2px; }
-        .push-settings-panel { position: absolute; left: 0; top: 48px; width: min(300px, calc(100vw - 48px)); box-sizing: border-box; padding: 16px; border: 1px solid #e1e8ed; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px #1a202c24; font-size: 13px; line-height: 1.6; }
+        .push-settings-panel { box-sizing: border-box; padding: 10px; border-top: 1px solid #e1e8ed; max-height: 65vh; overflow-y: auto; background: #fff; font-size: 13px; line-height: 1.6; }
         .push-settings-panel h2 { margin: 0 0 12px; font-size: 15px; color: #2d3748; }
         .push-settings-panel button { min-height: 40px; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 8px; background: #f7fafc; color: #2d3748; cursor: pointer; font: inherit; margin: 0 4px 6px 0; }
         .push-settings-panel button:disabled { opacity: .55; cursor: default; }
@@ -889,34 +893,11 @@
 
 <div class="top-nav-bar" style="flex-direction: column; align-items: flex-start; gap: 8px;">
     <a href="admin.html" class="admin-link">⚙ 前往後台管理中心</a>
-    <a href="checklist.html" class="admin-link">📋 每日任務清單</a>
 </div>
 
 <div class="app-heading">
     <h1>🎮 Realfarm R幣任務紀錄</h1>
-    <details class="push-settings" id="pushSettings">
-        <summary aria-label="通知設定" title="通知設定">🔔</summary>
-        <div class="push-settings-panel">
-            <h2>通知設定</h2>
-            <button id="pushToggle" type="button" disabled>🔔 開啟背景通知</button>
-            <button id="pushTest" type="button" hidden>傳送測試通知</button>
-            <fieldset style="margin:10px 0 0;padding:10px 0 0;border:0;border-top:1px solid #e1e8ed;">
-                <legend style="padding:0;font-weight:bold;">此裝置的定時提醒</legend>
-                <label style="display:flex;align-items:center;gap:6px;">
-                    <input id="dailyReminderEnabled" type="checkbox" disabled>有未完成任務時提醒
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;margin:8px 0;">
-                    每天 <input id="dailyReminderTime" type="time" value="23:30" disabled
-                        style="font:inherit;min-height:40px;min-width:100px;padding:0 8px;box-sizing:border-box;">
-                    <span>台灣時間</span>
-                </label>
-                <button id="dailyReminderSave" type="button" disabled>儲存此裝置設定</button>
-                <p id="dailyReminderStatus" role="status" aria-live="polite" style="margin:4px 0 0;color:#718096;">請先開啟背景通知。每台裝置各自設定。</p>
-            </fieldset>
-            <p id="pushStatus" role="status" aria-live="polite" style="margin:8px 0 0;">正在檢查通知設定…</p>
-            <p style="margin:8px 0 0;color:#718096;">提醒此共用紀錄的釣魚時間與所有帳號彩虹冷卻。iPhone／iPad 請先加入主畫面，再從主畫面開啟並允許通知。</p>
-        </div>
-    </details>
+
 </div>
 
 <div class="hint-bar">
@@ -1082,6 +1063,34 @@
         </div>
     </div>
 </div>
+
+<footer class="app-footer" aria-label="清單與通知設定">
+        <a href="checklist.html" class="footer-checklist-link">📋 Checklist 任務清單</a>
+        <details class="push-settings" id="pushSettings">
+        <summary aria-label="通知設定">🔔 通知設定</summary>
+        <div class="push-settings-panel">
+            <h2>通知設定</h2>
+            <button id="pushToggle" type="button" disabled>🔔 開啟背景通知</button>
+            <button id="pushTest" type="button" hidden>傳送測試通知</button>
+            <fieldset style="margin:10px 0 0;padding:10px 0 0;border:0;border-top:1px solid #e1e8ed;">
+                <legend style="padding:0;font-weight:bold;">此裝置的定時提醒</legend>
+                <label style="display:flex;align-items:center;gap:6px;">
+                    <input id="dailyReminderEnabled" type="checkbox" disabled>有未完成任務時提醒
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+                    每天 <input id="dailyReminderTime" type="time" value="23:30" disabled
+                        style="font:inherit;min-height:40px;min-width:100px;padding:0 8px;box-sizing:border-box;">
+                    <span>台灣時間</span>
+                </label>
+                <button id="dailyReminderSave" type="button" disabled>儲存此裝置設定</button>
+                <p id="dailyReminderStatus" role="status" aria-live="polite" style="margin:4px 0 0;color:#718096;">請先開啟背景通知。每台裝置各自設定。</p>
+            </fieldset>
+            <p id="pushStatus" role="status" aria-live="polite" style="margin:8px 0 0;">正在檢查通知設定…</p>
+            <p style="margin:8px 0 0;color:#718096;">提醒此共用紀錄的釣魚時間與所有帳號彩虹冷卻。iPhone／iPad 請先加入主畫面，再從主畫面開啟並允許通知。</p>
+        </div>
+        </details>
+
+</footer>
 
 <script>
     const pushSettings = document.getElementById('pushSettings');
@@ -2917,6 +2926,6 @@
 </script>
 <script src="push.js?v=2"></script>
 <script src="pull-refresh.js?v=1"></script>
-<script type="module" src="checklist-overview.js?v=1"></script>
+<script src="checklist-overview.js?v=4"></script>
 </body>
 </html>
