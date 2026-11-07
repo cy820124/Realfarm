@@ -887,8 +887,9 @@
 <!-- 🤝 懸浮待互助清單按鈕 -->
 <button class="btn-help-modal-open" id="helpModalOpenBtn" onclick="openHelpModal()">🤝 待互助清單 (0)</button>
 
-<div class="top-nav-bar">
+<div class="top-nav-bar" style="flex-direction: column; align-items: flex-start; gap: 8px;">
     <a href="admin.html" class="admin-link">⚙ 前往後台管理中心</a>
+    <a href="checklist.html" class="admin-link">📋 每日任務清單</a>
 </div>
 
 <div class="app-heading">
@@ -944,7 +945,7 @@
         <span id="completionRateTag" style="font-size: 12px; font-weight: bold; color: #22543d;">0/0</span>
     </div>
     <div class="pending-box" id="pendingOverviewBox" style="margin-top: 6px;">
-        <span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務,太棒了！</span>
+        <span data-rcoin-empty style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務,太棒了！</span>
     </div>
 </div>
 
@@ -2716,12 +2717,11 @@
 
         const titleText = document.getElementById('overviewTitleText');
         if (titleText) {
-            titleText.innerHTML = `🔥 ${activeDateStr} 未完成總覽 (點擊可打勾)`;
+            titleText.textContent = `🔥 ${activeDateStr} 未完成總覽`;
         }
 
         if (pendingChips.length === 0) {
-            box.innerHTML = '<span style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務,太棒了！</span>'; 
-            return;
+            box.innerHTML = '<span data-rcoin-empty style="font-size: 12px; color: #a0aec0;">目前沒有未完成的任務,太棒了！</span>';
         }
 
         pendingChips.forEach(item => {
@@ -2737,6 +2737,7 @@
             setupChipInteractions(chip, item.name, item.group, item.uid);
             box.appendChild(chip);
         });
+        document.dispatchEvent(new Event('realfarm-pending-rendered'));
     }
 
     function rotateAccountToTail(groupName, accName) {
@@ -2916,5 +2917,6 @@
 </script>
 <script src="push.js?v=2"></script>
 <script src="pull-refresh.js?v=1"></script>
+<script type="module" src="checklist-overview.js?v=1"></script>
 </body>
 </html>

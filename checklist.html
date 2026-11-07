@@ -1,0 +1,235 @@
+<!doctype html><html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>每日任務清單｜Realfarm</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#4a90e2"><link rel="apple-touch-icon" href="icon.png">
+<style>
+:root{--blue:#3978d7;--ink:#243149;--sub:#718096;--bg:#f3f6fb;--line:#e0e7f0;--green:#1b9e70;--white:#fff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif}.shell{max-width:1080px;margin:auto;padding:20px 16px 70px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}h1{font-size:24px;margin:0}h2{font-size:18px;margin:0}h3{font-size:15px;margin:0}.muted{color:var(--sub)}.small{font-size:13px}.toplinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pill{background:#e9f1ff;color:#2762b0;border-radius:18px;padding:5px 11px;font-size:12px}.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:white;font-weight:700;cursor:pointer;font-size:14px}.btn:disabled{opacity:.55;cursor:default}.btn.secondary{background:#eaf0f8;color:#35516f}.btn.danger{background:#fce8e9;color:#ad313b}.btn.ghost{background:white;color:#3b638c;border:1px solid var(--line)}.btn.tiny{padding:6px 9px;font-size:12px}.card{background:white;border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 14px #2e45610a;padding:17px;margin-bottom:14px}.overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.group-summary{display:flex;flex-direction:column;gap:6px;align-items:flex-start;cursor:default}.group-summary strong{font-size:17px;line-height:1.3}.group-summary .group-count{color:#40617d;font-weight:700;font-size:13px}.group-summary .mini-bar{width:100%;height:6px;background:#e2eaf4;border-radius:99px;overflow:hidden}.group-summary .mini-fill{height:100%;background:var(--green)}.pending-chip .count{margin-left:5px;font-size:11px;font-weight:700;opacity:.85}.pending-chip.long-press-active{background:#d5f5df;border-color:#77c79d}.stat{background:#f7faff;padding:13px;border:1px solid #e5edf9;border-radius:10px}.stat strong{display:block;font-size:25px;margin-top:5px}.stat .small{font-size:12px}.bar{height:11px;border-radius:50px;background:#e6ecf5;overflow:hidden;margin-top:15px}.bar>div{height:100%;background:var(--green);transition:width .2s}.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.flex{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.group-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.group-head-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}.group-copy{white-space:nowrap}.group-title-link{color:inherit;text-decoration:none;border-bottom:1px dashed #7b9bbd}.group-title-link:hover{color:#2762b0;border-bottom-color:#2762b0}.group-link-hint{font-size:12px;color:#3e749f;display:block;margin-top:5px;overflow-wrap:anywhere}.group-progress{font-size:12px;border-radius:50px;background:#eaf0f8;color:#49627b;padding:4px 9px}.task{display:flex;gap:11px;align-items:center;border:1px solid var(--line);padding:12px 13px;border-radius:10px;cursor:pointer;margin-bottom:8px;min-height:49px;background:white}.task:last-child{margin-bottom:0}.task:hover{background:#f8fbff}.task .task-count{margin-left:auto;white-space:nowrap;font-weight:700;color:#3e6795;background:#eaf2ff;border-radius:20px;padding:5px 9px;font-size:12px}.task .minus{border:1px solid #d2dae6;background:#fff;color:#5a6f89;border-radius:7px;font-size:18px;min-width:30px;height:30px;cursor:pointer}.task .minus:disabled{opacity:.3;cursor:default}.task .task-count.complete{background:#d9f4e5;color:#14764d}.task.done{background:#f2fbf6;border-color:#d2eddd}.task.done .task-title{text-decoration:line-through;color:#718b7e}.task-title{font-weight:600;overflow-wrap:anywhere}.task-note{font-size:12px;color:var(--sub);margin-top:3px}.pending-list{display:flex;flex-wrap:wrap;gap:7px}.pending-chip{border:1px solid #f5d59d;background:#fff9ed;color:#925a0a;padding:6px 10px;border-radius:30px;font-size:13px;cursor:pointer}.empty{color:var(--sub);font-size:14px;padding:12px 0}.notice{border-radius:9px;padding:10px 12px;margin-bottom:14px;background:#edf4ff;color:#365a86;font-size:13px}.notice.error{background:#fff0f0;color:#a23535}.form-row{display:flex;gap:8px;flex-wrap:wrap}.field{padding:10px 12px;border:1px solid #cfd9e5;border-radius:9px;min-width:0;flex:1;font:inherit;background:white}.login{max-width:420px;margin:50px auto}.login .field{display:block;width:100%;margin:10px 0}.manage-group{border:1px solid var(--line);border-radius:12px;padding:15px;margin-bottom:12px;background:#fff}.manage-task{border:1px solid var(--line);border-radius:9px;padding:9px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:7px 0}.manage-task .left{flex:1;min-width:0;overflow-wrap:anywhere}.actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap}.tag{font-size:11px;color:#667b92;background:#edf2f7;padding:3px 7px;border-radius:6px}.hidden{display:none!important}button:focus-visible,input:focus-visible{outline:3px solid #a2c7ff;outline-offset:2px}@media(max-width:720px){.group-grid{grid-template-columns:1fr}.overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shell{padding:14px 10px 40px}h1{font-size:20px}.card{padding:13px}.stat strong{font-size:23px}}
+
+.copy-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);z-index:3000;background:rgba(32,44,60,.94);color:#fff;padding:9px 18px;border-radius:999px;box-shadow:0 4px 16px #0003;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}.copy-toast.show{opacity:1;transform:translate(-50%,0)}
+
+.date-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.date-controls input{border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:#fff;color:var(--ink);font:inherit;max-width:165px}.date-controls button{white-space:nowrap}.history-note{font-size:12px;color:#875512;background:#fff7e7;border:1px solid #f7dfaa;padding:8px 11px;border-radius:9px;margin:0 0 12px}
+</style></head><body>
+<div class="shell"><header><div><h1>✅ 每日任務清單</h1><div class="small muted" id="dateLabel"></div></div><div class="toplinks"><a href="index.html" class="btn ghost" style="text-decoration:none;">← R幣任務紀錄</a><span id="sync" class="pill">準備連線</span><button id="goAdmin" class="btn secondary" type="button">⚙ 清單管理</button></div></header>
+<div id="message" class="notice hidden" role="status"></div>
+
+<main id="app"><div id="todayView"><section class="card"><div class="section-head"><h2>📂 分組總覽</h2><div class="date-controls"><span class="muted small" id="todayDisplay"></span><button type="button" id="viewYesterday" class="btn secondary tiny">昨天</button><input type="date" id="viewDate" aria-label="選擇要查看的紀錄日期"><button type="button" id="returnToday" class="btn secondary tiny hidden">回到今天</button></div></div><div id="historicalNote" class="history-note hidden">📅 正在查看歷史日期，可補登完成次數，也可以複製該日期的分組進度。今天的紀錄不會受到影響。</div><div id="groupOverview" class="overview-grid"></div></section>
+<section class="card"><div class="section-head"><h2>📌 今日未完成總覽</h2><span class="small muted">點擊複製名稱｜長按累加完成 1 次</span></div><div id="pendingList" class="pending-list"></div></section>
+<div class="section-head"><h2>📂 分組任務</h2><div class="flex"><button id="showAll" class="btn secondary tiny">全部</button><button id="showPending" class="btn secondary tiny">只看未完成</button></div></div><div id="groupList" class="group-grid"></div><p class="small muted">預設每天依台灣時間自動切換；可選擇昨天或其他歷史日期補登、複製回報。歷史頁面顯示的是目前清單項目與該日儲存的完成次數。</p></div><div id="adminView" class="hidden"><div class="section-head"><h2>⚙ 清單管理</h2><button id="goToday" class="btn secondary" type="button">← 返回今日清單</button></div><section class="card"><div class="section-head"><h2>➕ 新增分組</h2></div><form id="addGroupForm" class="form-row"><input id="newGroupName" class="field" placeholder="例如：工作、生活、學習" maxlength="60" required><button class="btn" type="submit">新增分組</button></form></section><section class="card"><div class="section-head"><h2>📂 分組與任務設定</h2><span class="muted small">可調整分組、任務的順序</span></div><div id="manageGroups"></div></section><p class="small muted">每個分組可設定回報群組連結：點分組標題開啟，按「複製進度」會複製文字並開啟該群組。每個分組可獨立設定每日每項需完成次數（預設 1 次）；變更次數不會刪除既有紀錄。修改任務名稱不會清空當天打勾紀錄；刪除任務會從每日清單移除，既有歷史紀錄仍可能保留其任務 ID。重要資料請定期由 Firebase 匯出備份。</p></div></main></div>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script><script>
+// 在 Firebase 主控台「專案設定 > 你的應用程式 > 網頁應用程式」貼上新專案設定。
+// 所有程式均在此 HTML 中；只需修改這一段設定。
+// 不使用登入功能，所有裝置共用 daily_checklist 資料。請設定 Realtime Database Rules。
+window.firebaseConfig = {
+  apiKey: "AIzaSyDnEljOXFhS8G7_iI56H_O1IEWofm8HY90",
+  authDomain: "realfarm-checklist.firebaseapp.com",
+  databaseURL: "https://realfarm-checklist-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "realfarm-checklist",
+  storageBucket: "realfarm-checklist.firebasestorage.app",
+  messagingSenderId: "307880963686",
+  appId: "1:307880963686:web:7e2cb68ad9d0a8fab847a7"
+};
+
+</script><script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const msg=$('message');
+ const copyToast=elForCopyToast();
+ function elForCopyToast(){const t=document.createElement('div');t.className='copy-toast';t.setAttribute('role','status');t.setAttribute('aria-live','polite');document.body.appendChild(t);return t}
+ function showCopyToast(){copyToast.textContent='✓ 已複製到剪貼簿';copyToast.classList.add('show');clearTimeout(showCopyToast.timer);showCopyToast.timer=setTimeout(()=>copyToast.classList.remove('show'),1500)}
+ function message(t,bad=false){msg.textContent=t;msg.classList.remove('hidden');msg.classList.toggle('error',bad);clearTimeout(message.timer);if(!bad)message.timer=setTimeout(()=>msg.classList.add('hidden'),3200)}
+ function err(e){$('sync').textContent='⚠ 同步失敗';message(e?.message||String(e),true)}
+ try{firebase.initializeApp(window.firebaseConfig)}catch(e){err(e);return}
+ const db=firebase.database(),root=db.ref('daily_checklist');
+ const refs={groups:root.child('groups'),tasks:root.child('tasks')};
+ let groups={},tasks={},checks={},day='',pendingOnly=false,dayRef=null,dayHandler=null,viewingHistory=false;
+ const todayView=$('todayView'),adminView=$('adminView');
+ const el=(tag,cls,text)=>{const v=document.createElement(tag);if(cls)v.className=cls;if(text!==undefined)v.textContent=text;return v};
+ const btn=(label,cls,fn)=>{const b=el('button',cls,label);b.type='button';b.onclick=fn;return b};
+ function todayKey(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}
+ function sorted(obj){return Object.entries(obj).sort((a,b)=>(a[1].order??0)-(b[1].order??0)||a[0].localeCompare(b[0]))}
+ function groupedTasks(id){return sorted(tasks).filter(([,v])=>v.groupId===id&&v.enabled!==false)}
+ function targetForGroup(gid){return Math.max(1,Math.min(99,Math.floor(Number(groups[gid]?.repeatCount)||1)))}
+ function progressCount(id){const record=checks[id];if(!record)return 0;if(typeof record.count==='number')return Math.max(0,Math.floor(record.count));return record.done?1:0}
+ function changeCount(id,delta){
+  if(!day||!tasks[id])return;
+  const target=targetForGroup(tasks[id].groupId);
+  const ref=root.child(`daily/${day}/${id}`);
+  // 使用 transaction，避免不同裝置同時打勾時覆蓋彼此。
+  ref.transaction(old=>{
+   const current=(old&&typeof old.count==='number')?Math.max(0,Math.floor(old.count)):(old?.done?1:0);
+   const next=Math.max(0,Math.min(target,current+delta));
+   return next?{count:next,done:next>=target,completedAt:firebase.database.ServerValue.TIMESTAMP}:null;
+  },(error,committed)=>{if(error)err(error)},false);
+ }
+ function render(){
+  const all=[],area=$('groupList');area.replaceChildren();
+  for(const [gid,g] of sorted(groups)){
+   const list=groupedTasks(gid);if(!list.length)continue;
+   const target=targetForGroup(gid);
+   all.push(...list);
+   const complete=list.filter(([id])=>progressCount(id)>=target).length;
+   const card=el('section','card'),head=el('div','group-head');card.id=`checklist-group-${gid}`;
+   const headActions=el('div','group-head-actions');
+   headActions.append(
+    el('span','group-progress',`${complete}/${list.length} 項完成 · 每項 ${target} 次`),
+    btn('📋 複製進度','btn secondary tiny group-copy',()=>copyGroupProgress(gid))
+   );
+   const groupTitle=el('h2','',g.name||'未命名分組');
+   const reportUrl=validGroupUrl(g.reportUrl);
+   if(reportUrl){const a=el('a','group-title-link',g.name||'未命名分組');a.href=reportUrl;a.target='_blank';a.rel='noopener noreferrer';a.title='開啟此分組的回報群組';groupTitle.replaceChildren(a)}
+   head.append(groupTitle,headActions);card.append(head);
+   for(const [id,t] of list){
+    const n=Math.min(target,progressCount(id)),done=n>=target;
+    if(pendingOnly&&done)continue;
+    const row=el('div',`task ${done?'done':''}`);
+    row.setAttribute('role','group');row.setAttribute('aria-label',`${t.name||'任務'}，${n}/${target} 次`);
+    const block=el('div');block.style.flex='1';block.append(el('div','task-title',t.name||'未命名任務'));
+    if(t.note)block.append(el('div','task-note',t.note));
+    const plus=btn(done?'✓':'＋','btn tiny '+(done?'secondary':''),()=>changeCount(id,1));plus.disabled=done;plus.title='完成一次';
+    const count=el('span',`task-count ${done?'complete':''}`,`${n}/${target}`);
+    const minus=btn('−','minus',()=>changeCount(id,-1));minus.disabled=n===0;minus.title='取消一次';
+    row.append(block,minus,count,plus);card.append(row);
+   }
+   area.append(card);
+  }
+  if(!all.length)area.append(el('section','card empty','目前沒有任務。請前往「清單管理」新增分組與任務。'));
+  const overview=$('groupOverview');overview.replaceChildren();
+  for(const [gid,g] of sorted(groups)){
+   const items=groupedTasks(gid),target=targetForGroup(gid),max=items.length*target;
+   const doneCount=items.reduce((sum,[tid])=>sum+Math.min(target,progressCount(tid)),0);
+   const complete=items.filter(([tid])=>progressCount(tid)>=target).length;
+   const percent=max?Math.round(doneCount/max*100):0;
+   const tile=el('div','stat group-summary'),title=el('strong','',g.name||'未命名分組');
+   const tally=el('span','group-count',`${complete}/${items.length} 項完成 · 每項 ${target} 次`);
+   const detail=el('span','small muted',`累計進度 ${doneCount}/${max} (${percent}%)`);
+   const track=el('div','mini-bar'),fill=el('div','mini-fill');fill.style.width=percent+'%';track.append(fill);
+   tile.append(title,tally,detail,track);overview.append(tile);
+  }
+  if(!Object.keys(groups).length)overview.append(el('span','empty','尚未建立分組，請先到清單管理新增。'));
+  const todo=all.filter(([id,t])=>progressCount(id)<targetForGroup(t.groupId));
+  const pending=$('pendingList');pending.replaceChildren();
+  if(!todo.length)pending.append(el('span','empty',all.length?'今天的任務全部完成！':'尚未設定任務'));
+  for(const [id,t] of todo){
+   const target=targetForGroup(t.groupId),count=progressCount(id),name=t.name||'未命名任務';
+   const b=btn('','pending-chip',()=>{});b.append(document.createTextNode(name),el('span','count',`${count}/${target}`));
+   setupPendingInteraction(b,id,name);pending.append(b);
+  }
+  scrollToLinkedGroup();
+ }
+ let linkedGroupScrolled=false;
+ function scrollToLinkedGroup(){
+  if(linkedGroupScrolled||!location.hash.startsWith('#checklist-group-'))return;
+  let id;try{id=decodeURIComponent(location.hash.slice(1))}catch{return}
+  const target=document.getElementById(id);if(!target)return;
+  linkedGroupScrolled=true;requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
+ }
+ // 未完成總覽：短按複製，按住 600ms 完成；觸控與滑鼠共用 Pointer Events。
+ function setupPendingInteraction(button,id,name){
+  let timer=null,longPressed=false,pressX=0,pressY=0,pressed=false;
+  const cancel=()=>{clearTimeout(timer);timer=null;pressed=false;button.classList.remove('long-press-active')};
+  button.addEventListener('pointerdown',e=>{
+   if(e.button!==0)return;
+   cancel();pressed=true;longPressed=false;pressX=e.clientX;pressY=e.clientY;
+   timer=setTimeout(()=>{if(!pressed)return;longPressed=true;cancel();changeCount(id,1);message(`✓ ${name}：已增加 1 次`);},600);
+  });
+  button.addEventListener('pointermove',e=>{if(pressed&&Math.hypot(e.clientX-pressX,e.clientY-pressY)>12)cancel()});
+  button.addEventListener('pointerup',cancel);
+  button.addEventListener('pointercancel',cancel);
+  button.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')cancel()});
+  button.addEventListener('contextmenu',e=>e.preventDefault());
+  button.addEventListener('click',e=>{
+   if(longPressed){e.preventDefault();longPressed=false;return}
+   copyTaskName(name);
+  });
+  // 鍵盤 Enter/Space 仍能複製；不依賴長按。
+ }
+ function groupProgressText(gid){
+  const list=groupedTasks(gid),target=targetForGroup(gid);
+  // day 是台灣日期 YYYY-MM-DD，不使用瀏覽器所在時區。
+  const dateParts=(day||todayKey()).split('-');
+  const dateText=`${Number(dateParts[1])}/${Number(dateParts[2])}`;
+  const lines=[`${dateText} ${list.length}帳`];
+  for(const [id,task] of list){
+   const n=Math.min(target,progressCount(id));
+   lines.push(`${task.name||'未命名任務'} ${n>=target?'✅':`已點${n}`}`);
+  }
+  return lines.join('\n');
+ }
+ function validGroupUrl(raw){
+  if(!raw||typeof raw!=='string')return '';
+  try{const u=new URL(raw.trim());return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}
+ }
+ function copyGroupProgress(gid){
+  const url=validGroupUrl(groups[gid]?.reportUrl);
+  // 必須在使用者點擊的同步事件中開啟新分頁，避免瀏覽器阻擋彈出視窗。
+  if(url){const w=window.open(url,'_blank','noopener,noreferrer');if(!w)message('瀏覽器可能阻擋了群組連結，請點擊分組標題開啟。',true)}
+  return copyText(groupProgressText(gid),'已複製此分組的完成狀況');
+ }
+ async function copyTaskName(name){return copyText(name,`已複製：${name}`);}
+ async function copyText(text,notice){
+  try{
+   if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text)}
+   else{
+    const temp=document.createElement('textarea');temp.value=text;temp.style.position='fixed';temp.style.left='-9999px';document.body.append(temp);temp.select();
+    const ok=document.execCommand('copy');temp.remove();if(!ok)throw new Error('瀏覽器未允許複製');
+   }
+   showCopyToast();
+  }catch(e){message('複製失敗，請用 HTTPS 或 localhost 開啟網頁',true)}
+ }
+ function setViewedDay(date,historyMode){
+  const latest=todayKey();
+  // YYYY-MM-DD 可以直接按字串比較；禁止未來日期，避免建立預先紀錄。
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>latest||Number.isNaN(new Date(date+'T12:00:00Z').getTime()))return;
+  viewingHistory=historyMode&&date!==latest;
+  $('viewDate').max=latest;$('viewDate').value=date;
+  $('returnToday').classList.toggle('hidden',!viewingHistory);
+  $('historicalNote').classList.toggle('hidden',!viewingHistory);
+  if(day===date){updateViewedLabels();return}
+  if(dayRef&&dayHandler)dayRef.off('value',dayHandler);
+  day=date;checks={};updateViewedLabels();render();
+  dayRef=root.child(`daily/${date}`);const boundDay=date;
+  dayHandler=s=>{if(day!==boundDay)return;checks=s.val()||{};render()};dayRef.on('value',dayHandler,err);
+ }
+ function updateViewedLabels(){
+  $('dateLabel').textContent=`${day} · ${viewingHistory?'歷史紀錄':'每日清單'}`;
+  $('todayDisplay').textContent=viewingHistory?'查看歷史紀錄':'今日紀錄';
+ }
+ function bindDay(){
+  const latest=todayKey();$('viewDate').max=latest;
+  // 若正在補登舊日期，不因午夜跨日或重新聚焦而跳走。
+  if(viewingHistory)return;
+  if(day!==latest)setViewedDay(latest,false);
+ }
+ $('viewYesterday').onclick=()=>{
+  const parts=todayKey().split('-').map(Number);
+  const utc=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]-1));
+  setViewedDay(utc.toISOString().slice(0,10),true);
+ };
+ $('viewDate').onchange=e=>{
+  const selected=e.target.value;
+  if(selected>todayKey()){message('不能選擇未來日期',true);e.target.value=day;return}
+  setViewedDay(selected,true);
+ };
+ $('returnToday').onclick=()=>setViewedDay(todayKey(),false);
+ function update(path,value){return root.child(path).set(value).catch(err)}
+ function ask(promptText,initial){const v=prompt(promptText,initial||'');return v===null?null:v.trim()}
+ function move(kind,id,direction,items){const idx=items.findIndex(x=>x[0]===id),target=idx+direction;if(idx<0||target<0||target>=items.length)return;const changes={};const a=items[idx][0],b=items[target][0];changes[`${kind}/${a}/order`]=target*100;changes[`${kind}/${b}/order`]=idx*100;return root.update(changes).catch(err)}
+ function manage(){const wrap=$('manageGroups');wrap.replaceChildren();const groupList=sorted(groups);
+  if(!groupList.length)wrap.append(el('div','empty','請先新增一個分組。'));
+  for(const [gi,[gid,g]] of groupList.entries()){
+   const box=el('section','manage-group'),head=el('div','group-head'),left=el('div'),ops=el('div','actions');left.append(el('h3','',g.name||'未命名分組'),el('span','tag',`每日每項需完成 ${targetForGroup(gid)} 次`));if(validGroupUrl(g.reportUrl))left.append(el('span','group-link-hint',`🔗 已設定群組連結：${g.reportUrl}`));
+   ops.append(btn('↑','btn secondary tiny',()=>move('groups',gid,-1,groupList)),btn('↓','btn secondary tiny',()=>move('groups',gid,1,groupList)),btn('改名','btn secondary tiny',()=>{const n=ask('修改分組名稱',g.name);if(n)update(`groups/${gid}/name`,n)}),btn('設定連結','btn secondary tiny',()=>{const input=ask('請貼上此分組的回報群組網址（http:// 或 https://；清空即可移除）',g.reportUrl||'');if(input===null)return;if(input&&!validGroupUrl(input)){message('請輸入以 https:// 或 http:// 開頭的完整網址',true);return}update(`groups/${gid}/reportUrl`,input||null)}),btn('設定次數','btn secondary tiny',()=>{const n=ask('此分組每項任務每天需要完成幾次？（1～99）',String(targetForGroup(gid)));if(n===null)return;const value=Number(n);if(!Number.isInteger(value)||value<1||value>99){message('請輸入 1～99 的整數',true);return}update(`groups/${gid}/repeatCount`,value)}),btn('刪除分組','btn danger tiny',()=>{const n=groupedTasks(gid).length;if(!confirm(`確定刪除「${g.name}」及其中 ${n} 個任務？`))return;const changes={[`groups/${gid}`]:null};Object.entries(tasks).forEach(([tid,t])=>{if(t.groupId===gid)changes[`tasks/${tid}`]=null});root.update(changes).catch(err)}));head.append(left,ops);box.append(head);
+   const items=groupedTasks(gid);for(const [idx,[tid,t]] of items.entries()){
+    const tr=el('div','manage-task'),desc=el('div','left'),actions=el('div','actions');desc.append(el('strong','',t.name));if(t.note)desc.append(el('div','small muted',t.note));
+    actions.append(btn('↑','btn secondary tiny',()=>move('tasks',tid,-1,items)),btn('↓','btn secondary tiny',()=>move('tasks',tid,1,items)),btn('編輯','btn secondary tiny',async()=>{const name=ask('任務名稱',t.name);if(!name)return;const note=ask('備註（可留空）',t.note||'');if(note===null)return;await root.update({[`tasks/${tid}/name`]:name,[`tasks/${tid}/note`]:note}).catch(err)}),btn('刪除','btn danger tiny',()=>{if(confirm(`刪除任務「${t.name}」？`))update(`tasks/${tid}`,null)}));tr.append(desc,actions);box.append(tr)
+   }
+   const form=el('form','form-row'),inp=el('input','field');inp.placeholder='新增此分組的任務';inp.maxLength=120;inp.required=true;const add=el('button','btn','新增任務');add.type='submit';form.append(inp,add);form.onsubmit=e=>{e.preventDefault();const name=inp.value.trim();if(!name)return;refs.tasks.push({name,groupId:gid,note:'',enabled:true,order:items.length*100}).then(()=>inp.value='').catch(err)};box.append(form);wrap.append(box)
+  }
+ }
+ $('addGroupForm').onsubmit=e=>{e.preventDefault();const input=$('newGroupName'),name=input.value.trim();if(!name)return;refs.groups.push({name,order:sorted(groups).length*100,repeatCount:1}).then(()=>input.value='').catch(err)};
+ $('showAll').onclick=()=>{pendingOnly=false;render()};$('showPending').onclick=()=>{pendingOnly=true;render()};
+ function navigate(admin){todayView.classList.toggle('hidden',admin);adminView.classList.toggle('hidden',!admin);$('goAdmin').classList.toggle('hidden',admin);document.title=admin?'清單管理｜每日任務':'每日任務清單';window.scrollTo(0,0)}
+ $('goAdmin').onclick=()=>navigate(true);$('goToday').onclick=()=>navigate(false);
+ refs.groups.on('value',s=>{groups=s.val()||{};render();manage();$('sync').textContent='☁ 已同步'},err);
+ refs.tasks.on('value',s=>{tasks=s.val()||{};render();manage();$('sync').textContent='☁ 已同步'},err);
+ bindDay();setInterval(bindDay,30000);window.addEventListener('focus',bindDay);document.addEventListener('visibilitychange',()=>{if(!document.hidden)bindDay()});
+})();
+</script></body></html>
