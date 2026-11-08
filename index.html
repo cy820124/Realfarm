@@ -727,6 +727,7 @@
             gap: 5px;
         }
         .fish-btn {
+            touch-action: manipulation;
             padding: 6px 2px;
             border-radius: 6px;
             font-size: 13px;
@@ -1021,7 +1022,7 @@
                 <div style="margin-top: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;">
                     <button id="modalRainbowBtn" onclick="openRainbowModal()" style="background: linear-gradient(135deg, #ff7eb3, #ff758c, #ffb199, #4facfe, #00f2fe); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0; white-space: nowrap;">🌈 彩虹冷卻追蹤</button>
                     <button type="button" class="notes-open" id="fishNotesOpen" aria-label="開啟備註" title="備註" onclick="openNotesDialog()" style="flex-shrink:0;">📝</button>
-                    <input type="text" id="customFishInput" placeholder="輸入帳號觸發冷卻 (用 . 分開，如 12.31.5)" 
+                    <input type="text" id="customFishInput" placeholder="帳號（.、, 或空白分隔）" 
                            onblur="triggerFishCooldownByInput()"
                            onkeypress="if(event.key === 'Enter') this.blur()"
                            style="flex: 1 1 160px; min-width: 0; max-width: 220px; padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 6px; outline: none; text-align: center;">
@@ -1736,7 +1737,7 @@
         const rawVal = inputEl.value.trim();
         if (!rawVal) return;
 
-        const accKeys = rawVal.split('.').map(s => s.trim()).filter(s => s !== '');
+        const accKeys = [...new Set(rawVal.split(/[.,，\s]+/).filter(Boolean))];
         if (accKeys.length === 0) return;
 
         const now = Date.now();
@@ -1983,6 +1984,8 @@
                     globalLastLongPressTime = Date.now();
                     toggleAdWatchedStatus(accKey);
                 });
+
+                btn.addEventListener('dblclick', event => event.preventDefault());
 
                 let clickTimer = null;
                 let clicks = 0;
